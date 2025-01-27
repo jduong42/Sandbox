@@ -15,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <p>Hi there!</p>
         <Providers>{children}</Providers>
       </body>
     </html>
