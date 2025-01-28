@@ -10,12 +10,16 @@ import {
 import React from "react"
 import { GiPadlock } from "react-icons/gi"
 import { useForm, SubmitHandler } from "react-hook-form"
+import { LoginSchema } from "@/lib/schemas/LoginSchema";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 export default function LoginForm() {
     const { register, handleSubmit, 
         formState: {isValid, errors } 
-    } = useForm();
-    const onSubmit = (data: any) => 
+    } = useForm<LoginSchema>({
+        resolver: zodResolver(LoginSchema),
+    });
+    const onSubmit = (data: LoginSchema) => 
         console.log(data);
 
     return (
@@ -40,12 +44,10 @@ export default function LoginForm() {
                             defaultValue=""
                             label="Email"
                             variant="bordered"
-                            {...register("Email", {
-                                 required: 'Email is required.',
-                                })}
-                            isInvalid={!!errors.Email}
+                            {...register("email")}
+                            isInvalid={!!errors.email}
                             errorMessage={
-                                errors.Email?.message as string
+                                errors.email?.message as string
                             }
                         />
                         <Input
@@ -53,16 +55,10 @@ export default function LoginForm() {
                             label="Password"
                             variant="bordered"
                             type="password"
-                            {...register("Password", {
-                                required: 'Password is required.',
-                                minLength: {
-                                    value: 12,
-                                    message: 'Password must be at least 12 characters long.',
-                                },
-                            })}
-                            isInvalid={!!errors.Password}
+                            {...register("password")}
+                            isInvalid={!!errors.password}
                             errorMessage={
-                                errors.Password?.message as string
+                                errors.password?.message as string
                             }
                         />
                         <Button
