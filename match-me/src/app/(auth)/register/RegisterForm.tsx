@@ -12,7 +12,7 @@ import {
     Input
 } from "@heroui/react";
 import React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { GiPadlock } from "react-icons/gi";
 
 export default function RegisterForm() {
@@ -20,7 +20,7 @@ export default function RegisterForm() {
         register,
         handleSubmit,
         formState: { errors, isValid, isSubmitting }
-    } = useForm({
+    } = useForm<RegisterSchema>({
         resolver: zodResolver(RegisterSchema),
         mode: "onTouched"
     });
