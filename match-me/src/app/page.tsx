@@ -14,7 +14,7 @@ export default async function Home() {
           <pre>{JSON.stringify(session, null, 2)}</pre>
           <form
             action={async () => {
-              "user server";
+              "use server";
 
               await signOut();
             }}
