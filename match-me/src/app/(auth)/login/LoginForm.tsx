@@ -24,7 +24,6 @@ export default function LoginForm() {
 
   const onSubmit = async (data: LoginSchema) => {
     const result = await signInUser(data);
-    console.log("result::: ", result);
     if (result.status === "success") {
       router.push("/members");
       router.refresh();
