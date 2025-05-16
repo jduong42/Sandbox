@@ -11,7 +11,9 @@ export default async function Layout({
   children: ReactNode;
   params: { userId: string };
 }) {
-  const member = await getMemberByUserId(params.userId);
+  const { userId } = await params;
+
+  const member = await getMemberByUserId(userId);
 
   if (!member) return notFound();
 

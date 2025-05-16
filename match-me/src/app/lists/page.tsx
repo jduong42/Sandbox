@@ -10,8 +10,9 @@ export default async function ListPage({
 }: {
   searchParams: { type: string };
 }) {
+  const { type } = await searchParams;
   const likeIds = await fetchCurrentUserLikeIds();
-  const members = await fetchLikedMembers(searchParams.type);
+  const members = await fetchLikedMembers(type);
 
   return (
     <div>

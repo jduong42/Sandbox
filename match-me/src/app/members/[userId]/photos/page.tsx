@@ -7,7 +7,9 @@ export default async function PhotosPage({
 }: {
   params: { userId: string };
 }) {
-  const photos = await getMemberPhotosByUserId(params.userId);
+  const { userId } = await params;
+
+  const photos = await getMemberPhotosByUserId(userId);
 
   return (
     <>
