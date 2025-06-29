@@ -54,3 +54,25 @@ export const bluetoothButtonStyles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+export const bleStatusBarStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.sm,
+    marginBottom: theme.spacing.lg,
+    minHeight: 36,
+  },
+  icon: {
+    marginRight: theme.spacing.xs,
+  },
+  statusText: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.white,
+    textAlign: 'center',
+  },
+});
