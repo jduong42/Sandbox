@@ -81,15 +81,70 @@ export const dataScreenStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
   },
   title: {
     fontSize: theme.typography.sizes.xxxl,
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.text,
     textAlign: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  heartRateDisplay: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.lg,
+  },
+  heartRateValue: {
+    fontSize: 48,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.primary,
+    textAlign: 'center',
+  },
+  heartRateUnit: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
+  },
+  heartRateStatus: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  controlsContainer: {
+    gap: theme.spacing.md,
+  },
+  readingsList: {
+    marginTop: theme.spacing.md,
+  },
+  readingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.backgroundSecondary,
+  },
+  readingTime: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
+    flex: 1,
+  },
+  readingValue: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text,
+    flex: 1,
+    textAlign: 'center',
+  },
+  readingRR: {
+    fontSize: theme.typography.sizes.xs,
+    color: theme.colors.textTertiary,
+    flex: 1,
+    textAlign: 'right',
   },
 });
 
