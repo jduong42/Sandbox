@@ -57,16 +57,19 @@ const BLEStatusBar: React.FC<BLEStatusBarProps> = ({
   };
 
   return (
-    <View style={[bleStatusBarStyles.container, { backgroundColor: getStatusColor() }]}>
+    <View
+      style={[
+        bleStatusBarStyles.container,
+        { backgroundColor: getStatusColor() },
+      ]}
+    >
       <Icon
         name={getIconName()}
         size={16}
         color={theme.colors.white}
         style={bleStatusBarStyles.icon}
       />
-      <Text style={bleStatusBarStyles.statusText}>
-        {getStatusText()}
-      </Text>
+      <Text style={bleStatusBarStyles.statusText}>{getStatusText()}</Text>
     </View>
   );
 };

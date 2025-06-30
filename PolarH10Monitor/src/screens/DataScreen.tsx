@@ -1,18 +1,18 @@
 import React from 'react';
 import { View, Text, StatusBar } from 'react-native';
-import { homeScreenStyles } from '../theme/styles';
 import { theme } from '../theme';
+import { dataScreenStyles } from '../theme/styles';
 
-const HomeScreen: React.FC = () => {
+const DataScreen: React.FC = () => {
   return (
-    <View style={homeScreenStyles.container}>
+    <View style={dataScreenStyles.container}>
       <StatusBar
         barStyle="dark-content"
         backgroundColor={theme.colors.background}
       />
-      <Text style={homeScreenStyles.title}>PolarH10Monitor Application</Text>
+      <Text style={dataScreenStyles.title}>Data</Text>
     </View>
   );
 };
 
-export default HomeScreen;
+export default DataScreen;

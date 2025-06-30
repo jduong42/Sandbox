@@ -17,8 +17,8 @@ class BLEService {
 
   // Initialize BLE manager and wait for it to be ready
   private async initializeManager(): Promise<void> {
-    return new Promise((resolve) => {
-      const subscription = this.manager.onStateChange((state) => {
+    return new Promise(resolve => {
+      const subscription = this.manager.onStateChange(state => {
         console.log('BLE State changed to:', state);
         this.bluetoothState = state;
         if (state === State.PoweredOn || state === State.PoweredOff) {
@@ -33,15 +33,15 @@ class BLEService {
   // Wait for manager to be ready
   private async waitForManagerReady(): Promise<void> {
     if (this.isManagerReady) return;
-    
+
     let attempts = 0;
     const maxAttempts = 30; // 3 seconds max wait
-    
+
     while (!this.isManagerReady && attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 100));
       attempts++;
     }
-    
+
     if (!this.isManagerReady) {
       throw new Error('BLE Manager failed to initialize');
     }
@@ -88,10 +88,14 @@ class BLEService {
   }
 
   // Get current connection status
-  async getConnectionStatus(): Promise<{ isConnected: boolean; deviceName?: string; bluetoothEnabled: boolean }> {
+  async getConnectionStatus(): Promise<{
+    isConnected: boolean;
+    deviceName?: string;
+    bluetoothEnabled: boolean;
+  }> {
     // Check if device is still actually connected
     const isConnected = await this.isDeviceConnected();
-    
+
     return {
       isConnected,
       deviceName: this.connectedDevice?.name || undefined,
@@ -122,7 +126,7 @@ class BLEService {
     try {
       // Ensure manager is ready
       await this.waitForManagerReady();
-      
+
       // Request permissions first
       const hasPermissions = await this.requestBLEPermissions();
       if (!hasPermissions) {
@@ -165,10 +169,10 @@ class BLEService {
     try {
       const device = await this.manager.connectToDevice(deviceId);
       this.connectedDevice = device;
-      
+
       // Monitor connection state
       this.monitorConnection(device);
-      
+
       console.log('Connected to device:', device.name);
       return device;
     } catch (error) {
@@ -185,22 +189,27 @@ class BLEService {
     }
 
     // Monitor device disconnection
-    this.connectionSubscription = device.onDisconnected((error, disconnectedDevice) => {
-      console.log('Device disconnected:', disconnectedDevice?.name, error);
-      
-      const deviceName = this.connectedDevice?.name || disconnectedDevice?.name || 'Unknown Device';
-      this.connectedDevice = null;
-      
-      // Notify the UI about disconnection
-      if (this.onDisconnectedCallback) {
-        this.onDisconnectedCallback(deviceName);
-      }
-      
-      if (this.connectionSubscription) {
-        this.connectionSubscription.remove();
-        this.connectionSubscription = null;
-      }
-    });
+    this.connectionSubscription = device.onDisconnected(
+      (error, disconnectedDevice) => {
+        console.log('Device disconnected:', disconnectedDevice?.name, error);
+
+        const deviceName =
+          this.connectedDevice?.name ||
+          disconnectedDevice?.name ||
+          'Unknown Device';
+        this.connectedDevice = null;
+
+        // Notify the UI about disconnection
+        if (this.onDisconnectedCallback) {
+          this.onDisconnectedCallback(deviceName);
+        }
+
+        if (this.connectionSubscription) {
+          this.connectionSubscription.remove();
+          this.connectionSubscription = null;
+        }
+      },
+    );
   }
 
   // Check if device is still connected
@@ -230,7 +239,7 @@ class BLEService {
         this.connectionSubscription.remove();
         this.connectionSubscription = null;
       }
-      
+
       await this.manager.cancelDeviceConnection(deviceId);
       this.connectedDevice = null;
       console.log('Disconnected from device');
@@ -247,7 +256,7 @@ class BLEService {
       this.connectionSubscription.remove();
       this.connectionSubscription = null;
     }
-    
+
     this.manager.destroy();
   }
 }

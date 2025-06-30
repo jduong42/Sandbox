@@ -5,10 +5,18 @@
  */
 
 import React from 'react';
-import { HomeScreen } from './src/screens';
+import { NavigationContainer } from '@react-navigation/native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { MainTabNavigator } from './src/navigation';
 
 function App() {
-  return <HomeScreen />;
+  return (
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <MainTabNavigator />
+      </NavigationContainer>
+    </SafeAreaProvider>
+  );
 }
 
 export default App;
