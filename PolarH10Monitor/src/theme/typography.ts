@@ -35,6 +35,43 @@ export const typography = {
     medium: 'System',
     bold: 'System',
   },
+
+  // Pre-defined text styles
+  h1: {
+    fontSize: 32,
+    fontWeight: '700' as const,
+    lineHeight: 1.2,
+  },
+  h2: {
+    fontSize: 28,
+    fontWeight: '600' as const,
+    lineHeight: 1.2,
+  },
+  h3: {
+    fontSize: 24,
+    fontWeight: '600' as const,
+    lineHeight: 1.3,
+  },
+  h4: {
+    fontSize: 20,
+    fontWeight: '500' as const,
+    lineHeight: 1.3,
+  },
+  body: {
+    fontSize: 16,
+    fontWeight: '400' as const,
+    lineHeight: 1.4,
+  },
+  caption: {
+    fontSize: 12,
+    fontWeight: '400' as const,
+    lineHeight: 1.4,
+  },
+  button: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    lineHeight: 1.2,
+  },
 } as const;
 
 export type Typography = typeof typography;

@@ -28,6 +28,10 @@ export const colors = {
   white: '#FFFFFF',
   black: '#000000',
   transparent: 'transparent',
+
+  // Additional colors for components
+  surface: '#FFFFFF',
+  shadow: '#000000',
 } as const;
 
 export type Colors = typeof colors;

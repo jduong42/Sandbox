@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { theme } from '../theme';
 import { HomeScreen, DataScreen, SMLScreen, SettingsScreen } from '../screens';
+import LogViewerScreen from '../screens/LogViewerScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -25,6 +26,9 @@ const MainTabNavigator: React.FC = () => {
               break;
             case 'Settings':
               iconName = 'settings';
+              break;
+            case 'Logs':
+              iconName = 'article';
               break;
             default:
               iconName = 'help';
@@ -78,6 +82,11 @@ const MainTabNavigator: React.FC = () => {
         name="Settings"
         component={SettingsScreen}
         options={{ title: 'Settings' }}
+      />
+      <Tab.Screen
+        name="Logs"
+        component={LogViewerScreen}
+        options={{ title: 'Logs' }}
       />
     </Tab.Navigator>
   );

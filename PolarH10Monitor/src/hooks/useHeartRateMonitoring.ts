@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { bleService, heartRateService, HeartRateReading } from '../services';
+import { logger } from '../utils/logger';
 
 interface HeartRateMonitoringState {
   isMonitoring: boolean;
@@ -16,7 +17,8 @@ interface HeartRateMonitoringActions {
   clearData: () => void;
 }
 
-export const useHeartRateMonitoring = (): HeartRateMonitoringState & HeartRateMonitoringActions => {
+export const useHeartRateMonitoring = (): HeartRateMonitoringState &
+  HeartRateMonitoringActions => {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [currentHeartRate, setCurrentHeartRate] = useState<number | null>(null);
   const [readings, setReadings] = useState<HeartRateReading[]>([]);
@@ -32,14 +34,23 @@ export const useHeartRateMonitoring = (): HeartRateMonitoringState & HeartRateMo
     };
 
     checkConnection();
-    const interval = setInterval(checkConnection, 2000);
+
+    // Only start interval if we're connected or monitoring
+    const interval = setInterval(() => {
+      if (isConnected || isMonitoring) {
+        checkConnection();
+      }
+    }, 5000); // Check every 5 seconds when connected/monitoring
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isConnected, isMonitoring]);
 
   const startMonitoring = useCallback(async () => {
     if (!isConnected) {
-      Alert.alert('Not Connected', 'Please connect to a Polar H10 device first in Settings.');
+      Alert.alert(
+        'Not Connected',
+        'Please connect to a Polar H10 device first in Settings.',
+      );
       return;
     }
 
@@ -51,22 +62,32 @@ export const useHeartRateMonitoring = (): HeartRateMonitoringState & HeartRateMo
 
     try {
       setIsMonitoring(true);
-      
-      await heartRateService.startMonitoring(connectedDevice, (reading: HeartRateReading) => {
-        console.log('Heart rate reading:', reading.heartRate, 'BPM');
-        
-        setCurrentHeartRate(reading.heartRate);
-        setReadings(prev => {
-          const newReadings = [...prev, reading];
-          // Keep only last 20 readings to prevent memory issues
-          return newReadings.slice(-20);
-        });
-      });
+
+      await heartRateService.startMonitoring(
+        connectedDevice,
+        (reading: HeartRateReading) => {
+          logger.info('Heart rate reading received', {
+            heartRate: reading.heartRate,
+            rrIntervals: reading.rrIntervals.length,
+            sensorContact: reading.sensorContact,
+          });
+
+          setCurrentHeartRate(reading.heartRate);
+          setReadings(prev => {
+            const newReadings = [...prev, reading];
+            // Keep only last 20 readings to prevent memory issues
+            return newReadings.slice(-20);
+          });
+        },
+      );
 
       Alert.alert('Success', 'Started heart rate monitoring!');
     } catch (error) {
-      console.error('Failed to start monitoring:', error);
-      Alert.alert('Error', 'Failed to start heart rate monitoring. Make sure the device supports heart rate service.');
+      logger.error('Failed to start heart rate monitoring', { error });
+      Alert.alert(
+        'Error',
+        'Failed to start heart rate monitoring. Make sure the device supports heart rate service.',
+      );
       setIsMonitoring(false);
     }
   }, [isConnected]);
