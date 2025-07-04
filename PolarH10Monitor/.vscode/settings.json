@@ -1,4 +1,27 @@
 {
-  "java.configuration.updateBuildConfiguration": "interactive",
-  "java.compile.nullAnalysis.mode": "automatic"
+  "java.enabled": false,
+  "java.configuration.updateBuildConfiguration": "disabled",
+  "java.compile.nullAnalysis.mode": "disabled",
+  "java.project.sourcePaths": [],
+  "java.project.referencedLibraries": [],
+  "java.import.gradle.enabled": false,
+  "java.eclipse.downloadSources": false,
+  "java.autobuild.enabled": false,
+  "java.import.gradle.offline.enabled": false,
+  "java.configuration.workspaceCacheLimit": 90,
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/build/**",
+    "**/target/**",
+    "**"
+  ],
+  "files.exclude": {
+    "**/node_modules/**/android": true,
+    "**/node_modules/**/.settings": true,
+    "**/node_modules/**/.project": true,
+    "**/node_modules/**/.classpath": true
+  },
+  "search.exclude": {
+    "**/node_modules/**/android": true
+  }
 }

@@ -1,0 +1,30 @@
+{
+  "folders": [
+    {
+      "name": "PolarH10Monitor",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "typescript.suggest.autoImports": true,
+    "emmet.includeLanguages": {
+      "javascript": "javascriptreact"
+    },
+    "files.associations": {
+      "*.tsx": "typescriptreact",
+      "*.ts": "typescript"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-vscode.vscode-typescript-next",
+      "msjsdiag.vscode-react-native",
+      "esbenp.prettier-vscode"
+    ],
+    "unwantedRecommendations": [
+      "redhat.java",
+      "vscjava.vscode-java-pack"
+    ]
+  }
+}

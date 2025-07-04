@@ -1,0 +1,7 @@
+# VS Code workspace exclusions for Java/Gradle
+node_modules/*/android/
+node_modules/@*/*/android/
+*.classpath
+*.project
+.settings/
+.metadata/
