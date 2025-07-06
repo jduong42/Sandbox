@@ -91,39 +91,6 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
-  // Debug function to test device history manually
-  const testDeviceHistory = async () => {
-    try {
-      logger.info('Testing device history manually...');
-      
-      // Add a test device
-      await deviceHistoryService.addDevice({
-        id: 'test-device-123',
-        name: 'Test Polar H10',
-      });
-      
-      // Refresh the list
-      await refreshDevices();
-      
-      Alert.alert('Test', 'Added test device to history');
-    } catch (error) {
-      logger.error('Test failed', { error });
-      Alert.alert('Test Failed', 'Could not add test device');
-    }
-  };
-
-  // Debug function to clear all history
-  const clearTestHistory = async () => {
-    try {
-      logger.info('Clearing all device history...');
-      await clearAllDevices();
-      Alert.alert('Cleared', 'All device history cleared');
-    } catch (error) {
-      logger.error('Clear failed', { error });
-      Alert.alert('Clear Failed', 'Could not clear device history');
-    }
-  };
-
   return (
     <ScrollView style={settingsScreenStyles.container}>
       <StatusBar
@@ -141,39 +108,6 @@ const SettingsScreen: React.FC = () => {
         onClearAll={clearAllDevices}
         onRefresh={refreshDevices}
       />
-
-      {/* Temporary Debug Buttons */}
-      <View style={{ flexDirection: 'row', margin: 16, gap: 8 }}>
-        <TouchableOpacity
-          style={{
-            backgroundColor: '#FF6B6B',
-            padding: 16,
-            borderRadius: 8,
-            alignItems: 'center',
-            flex: 1,
-          }}
-          onPress={testDeviceHistory}
-        >
-          <Text style={{ color: 'white', fontWeight: 'bold' }}>
-            🧪 Test Add
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={{
-            backgroundColor: '#FF9500',
-            padding: 16,
-            borderRadius: 8,
-            alignItems: 'center',
-            flex: 1,
-          }}
-          onPress={clearTestHistory}
-        >
-          <Text style={{ color: 'white', fontWeight: 'bold' }}>
-            🗑️ Clear All
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Connection Status Card */}
       <View style={settingsScreenStyles.settingCard}>
