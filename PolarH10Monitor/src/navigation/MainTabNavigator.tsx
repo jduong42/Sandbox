@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { theme } from '../theme';
-import { HomeScreen, DataScreen, SMLScreen, SettingsScreen } from '../screens';
+import { HomeScreen, DataScreen, SMLScreen, SettingsScreen, TrainingDataScreen } from '../screens';
 import LogViewerScreen from '../screens/LogViewerScreen';
 
 const Tab = createBottomTabNavigator();
@@ -17,6 +17,9 @@ const MainTabNavigator: React.FC = () => {
           switch (route.name) {
             case 'Home':
               iconName = 'home';
+              break;
+            case 'Training':
+              iconName = 'fitness-center';
               break;
             case 'Data':
               iconName = 'bar-chart';
@@ -67,6 +70,11 @@ const MainTabNavigator: React.FC = () => {
         name="Home"
         component={HomeScreen}
         options={{ title: 'PolarH10Monitor' }}
+      />
+      <Tab.Screen
+        name="Training"
+        component={TrainingDataScreen}
+        options={{ title: 'Training Data' }}
       />
       <Tab.Screen
         name="Data"

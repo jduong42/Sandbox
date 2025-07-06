@@ -1,3 +1,26 @@
+# PolarH10Monitor
+
+A React Native application for monitoring and recording training sessions with Polar H10 heart rate sensors. The app features Bluetooth Low Energy connectivity, session recording with device-internal storage, and comprehensive training data management.
+
+## 📱 Features
+
+- **Bluetooth LE Integration**: Connect to Polar H10 heart rate monitors
+- **Session Recording**: Start/stop recording sessions with device-internal storage
+- **Real-time Monitoring**: Live heart rate data display during training
+- **Session History**: Track and manage completed training sessions
+- **Device Management**: Automatic device discovery and connection history
+- **Cross-platform**: Native iOS and Android support
+
+## 📚 Documentation
+
+For detailed guides, implementation details, and testing procedures, see the [docs](./docs/) folder:
+
+- **[Testing Guide](./docs/MANUAL_TESTING_CHECKLIST.md)** - Comprehensive testing checklist
+- **[Architecture Overview](./docs/BLE_SERVICE_REFACTORING.md)** - BLE service implementation
+- **[Implementation Details](./docs/README.md)** - Full documentation index
+
+---
+
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 # Getting Started
