@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import NativeIcon from '../components/common/NativeIcon';
 import { theme } from '../theme';
 import { dataScreenStyles, settingsScreenStyles } from '../theme/styles';
 import { useHeartRateMonitoring } from '../hooks';
@@ -35,7 +35,7 @@ const DataScreen: React.FC = () => {
       {/* Connection Status */}
       <View style={settingsScreenStyles.settingCard}>
         <View style={settingsScreenStyles.settingHeader}>
-          <Icon
+          <NativeIcon
             name={isConnected ? 'favorite' : 'heart-broken'}
             size={24}
             color={
@@ -110,7 +110,7 @@ const DataScreen: React.FC = () => {
       {readings.length > 0 && (
         <View style={settingsScreenStyles.settingCard}>
           <View style={settingsScreenStyles.settingHeader}>
-            <Icon
+            <NativeIcon
               name="timeline"
               size={24}
               color={theme.colors.textSecondary}

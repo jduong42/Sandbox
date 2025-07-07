@@ -129,7 +129,7 @@ export const DeviceHistoryCard: React.FC<DeviceHistoryCardProps> = ({
         activeOpacity={0.7}
       >
         <View style={styles.headerLeft}>
-          <Text style={styles.headerIcon}>📱</Text>
+          <Text style={styles.headerNativeIcon}>📱</Text>
           <Text style={styles.headerTitle}>Remembered Devices</Text>
           {devices.length > 0 && (
             <View style={styles.badge}>
@@ -138,7 +138,7 @@ export const DeviceHistoryCard: React.FC<DeviceHistoryCardProps> = ({
           )}
         </View>
         
-        <Text style={styles.expandIcon}>
+        <Text style={styles.expandNativeIcon}>
           {isExpanded ? "▲" : "▼"}
         </Text>
       </TouchableOpacity>
@@ -163,7 +163,7 @@ export const DeviceHistoryCard: React.FC<DeviceHistoryCardProps> = ({
 
           {!loading && !error && devices.length === 0 && (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📱</Text>
+              <Text style={styles.emptyNativeIcon}>📱</Text>
               <Text style={styles.emptyText}>No remembered devices</Text>
               <Text style={styles.emptySubtext}>
                 Connect to a device to see it here for quick reconnection
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  headerIcon: {
+  headerNativeIcon: {
     fontSize: 24,
     marginRight: 12,
   },
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: '600',
   },
-  expandIcon: {
+  expandNativeIcon: {
     fontSize: 16,
     color: colors.textSecondary,
   },
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
   },
-  emptyIcon: {
+  emptyNativeIcon: {
     fontSize: 48,
     marginBottom: 16,
   },

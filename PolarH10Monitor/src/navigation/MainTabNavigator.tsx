@@ -1,8 +1,14 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import NativeIcon from '../components/common/NativeIcon';
 import { theme } from '../theme';
-import { HomeScreen, DataScreen, SMLScreen, SettingsScreen, TrainingDataScreen } from '../screens';
+import {
+  HomeScreen,
+  DataScreen,
+  SMLScreen,
+  SettingsScreen,
+  TrainingDataScreen,
+} from '../screens';
 import LogViewerScreen from '../screens/LogViewerScreen';
 
 const Tab = createBottomTabNavigator();
@@ -11,7 +17,15 @@ const MainTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({
+          focused,
+          color,
+          size,
+        }: {
+          focused: boolean;
+          color: string;
+          size: number;
+        }) => {
           let iconName: string;
 
           switch (route.name) {
@@ -37,7 +51,7 @@ const MainTabNavigator: React.FC = () => {
               iconName = 'help';
           }
 
-          return <Icon name={iconName} size={size} color={color} />;
+          return <NativeIcon name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,

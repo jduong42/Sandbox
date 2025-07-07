@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import NativeIcon from './common/NativeIcon';
 import { theme } from '../theme';
 import { bleStatusBarStyles } from '../theme/styles';
 
@@ -43,7 +43,7 @@ const BLEStatusBar: React.FC<BLEStatusBarProps> = ({
     return theme.colors.textSecondary;
   };
 
-  const getIconName = () => {
+  const getNativeIconName = () => {
     if (!bluetoothEnabled) {
       return 'bluetooth-disabled';
     }
@@ -63,8 +63,8 @@ const BLEStatusBar: React.FC<BLEStatusBarProps> = ({
         { backgroundColor: getStatusColor() },
       ]}
     >
-      <Icon
-        name={getIconName()}
+      <NativeIcon
+        name={getNativeIconName()}
         size={16}
         color={theme.colors.white}
         style={bleStatusBarStyles.icon}

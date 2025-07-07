@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, View } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import NativeIcon from './common/NativeIcon';
 import { theme } from '../theme';
 import { bluetoothButtonStyles } from '../theme/styles';
 
@@ -35,7 +35,7 @@ const BluetoothButton: React.FC<BluetoothButtonProps> = ({
     return [bluetoothButtonStyles.button, bluetoothButtonStyles.buttonDefault];
   };
 
-  const getIconColor = () => {
+  const getNativeIconColor = () => {
     if (disabled || loading) {
       return theme.colors.textTertiary;
     }
@@ -60,10 +60,10 @@ const BluetoothButton: React.FC<BluetoothButtonProps> = ({
       activeOpacity={0.8}
     >
       <View style={bluetoothButtonStyles.buttonContent}>
-        <Icon
+        <NativeIcon
           name={connected ? 'bluetooth-connected' : 'bluetooth'}
           size={24}
-          color={getIconColor()}
+          color={getNativeIconColor()}
           style={bluetoothButtonStyles.icon}
         />
         <Text

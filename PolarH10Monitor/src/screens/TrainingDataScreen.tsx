@@ -8,7 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import NativeIcon from '../components/common/NativeIcon';
 import { theme, trainingScreenStyles } from '../theme';
 import { useBLEScanning, useSessionRecording } from '../hooks';
 
@@ -71,7 +71,7 @@ const TrainingDataScreen: React.FC = () => {
               : trainingScreenStyles.connectionStatusDisconnected,
           ]}
         >
-          <Icon
+          <NativeIcon
             name={isConnected ? 'bluetooth-connected' : 'bluetooth-disabled'}
             size={20}
             color={isConnected ? theme.colors.success : theme.colors.error}
@@ -148,7 +148,11 @@ const TrainingDataScreen: React.FC = () => {
               {isLoading ? (
                 <ActivityIndicator size="small" color={theme.colors.surface} />
               ) : (
-                <Icon name="stop" size={20} color={theme.colors.surface} />
+                <NativeIcon
+                  name="stop"
+                  size={20}
+                  color={theme.colors.surface}
+                />
               )}
               <Text style={trainingScreenStyles.stopButtonText}>
                 {isLoading ? 'Stopping...' : 'Stop Recording'}
@@ -180,7 +184,7 @@ const TrainingDataScreen: React.FC = () => {
         {!isRecording && (
           <View style={trainingScreenStyles.recordingCard}>
             <View style={trainingScreenStyles.recordingCardHeader}>
-              <Icon
+              <NativeIcon
                 name="fiber-manual-record"
                 size={24}
                 color={theme.colors.primary}
@@ -247,7 +251,7 @@ const TrainingDataScreen: React.FC = () => {
               {isLoading ? (
                 <ActivityIndicator size="small" color={theme.colors.surface} />
               ) : (
-                <Icon
+                <NativeIcon
                   name="fiber-manual-record"
                   size={20}
                   color={
@@ -287,7 +291,7 @@ const TrainingDataScreen: React.FC = () => {
         {/* Session History */}
         <View style={trainingScreenStyles.historyCard}>
           <View style={trainingScreenStyles.historyHeader}>
-            <Icon
+            <NativeIcon
               name="history"
               size={24}
               color={theme.colors.primary}

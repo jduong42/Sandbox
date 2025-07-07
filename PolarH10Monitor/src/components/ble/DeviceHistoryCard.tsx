@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import NativeIcon from '../common/NativeIcon';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { StoredDevice } from '../../services/DeviceHistoryService';
@@ -43,8 +43,8 @@ export const DeviceHistoryCard: React.FC<DeviceHistoryCardProps> = ({
       deviceCount: devices.length,
       loading,
       error,
-      devices: devices.map(d => ({ 
-        id: d.id.substring(0, 8), 
+      devices: devices.map(d => ({
+        id: d.id.substring(0, 8),
         name: d.name || 'NO_NAME_IN_DEVICE',
         hasName: !!d.name,
         rawName: d.name,
@@ -118,9 +118,13 @@ export const DeviceHistoryCard: React.FC<DeviceHistoryCardProps> = ({
 
         <View style={styles.deviceActions}>
           {editMode ? (
-            <Icon name="delete" size={20} color={colors.error} />
+            <NativeIcon name="delete" size={20} color={colors.error} />
           ) : (
-            <Icon name="chevron-right" size={20} color={colors.textSecondary} />
+            <NativeIcon
+              name="chevron-right"
+              size={20}
+              color={colors.textSecondary}
+            />
           )}
         </View>
       </TouchableOpacity>
@@ -135,11 +139,11 @@ export const DeviceHistoryCard: React.FC<DeviceHistoryCardProps> = ({
         activeOpacity={0.7}
       >
         <View style={styles.headerLeft}>
-          <Icon
+          <NativeIcon
             name="history"
             size={24}
             color={colors.primary}
-            style={styles.headerIcon}
+            style={styles.headerNativeIcon}
           />
           <Text style={styles.headerTitle}>Remembered Devices</Text>
           {devices.length > 0 && (
@@ -149,7 +153,7 @@ export const DeviceHistoryCard: React.FC<DeviceHistoryCardProps> = ({
           )}
         </View>
 
-        <Icon
+        <NativeIcon
           name={isExpanded ? 'expand-less' : 'expand-more'}
           size={20}
           color={colors.textSecondary}
@@ -176,11 +180,11 @@ export const DeviceHistoryCard: React.FC<DeviceHistoryCardProps> = ({
 
           {!loading && !error && devices.length === 0 && (
             <View style={styles.emptyContainer}>
-              <Icon
+              <NativeIcon
                 name="bluetooth"
                 size={48}
                 color={colors.textSecondary}
-                style={styles.emptyIcon}
+                style={styles.emptyNativeIcon}
               />
               <Text style={styles.emptyText}>No remembered devices</Text>
               <Text style={styles.emptySubtext}>
@@ -199,7 +203,7 @@ export const DeviceHistoryCard: React.FC<DeviceHistoryCardProps> = ({
                   ]}
                   onPress={() => setEditMode(!editMode)}
                 >
-                  <Icon
+                  <NativeIcon
                     name={editMode ? 'check' : 'edit'}
                     size={16}
                     color={editMode ? colors.surface : colors.primary}
@@ -219,7 +223,7 @@ export const DeviceHistoryCard: React.FC<DeviceHistoryCardProps> = ({
                     style={styles.clearAllButton}
                     onPress={handleClearAll}
                   >
-                    <Icon name="delete" size={16} color={colors.error} />
+                    <NativeIcon name="delete" size={16} color={colors.error} />
                     <Text style={styles.clearAllButtonText}>Clear All</Text>
                   </TouchableOpacity>
                 )}
@@ -262,7 +266,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  headerIcon: {
+  headerNativeIcon: {
     marginRight: 12,
   },
   headerTitle: {
@@ -321,7 +325,7 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
   },
-  emptyIcon: {
+  emptyNativeIcon: {
     marginBottom: 16,
   },
   emptyText: {

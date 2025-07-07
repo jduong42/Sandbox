@@ -7,7 +7,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import NativeIcon from '../components/common/NativeIcon';
 import { theme } from '../theme';
 import { settingsScreenStyles } from '../theme/styles';
 import { useBLEScanning, useDeviceHistory } from '../hooks';
@@ -112,7 +112,7 @@ const SettingsScreen: React.FC = () => {
       {/* Connection Status Card */}
       <View style={settingsScreenStyles.settingCard}>
         <View style={settingsScreenStyles.settingHeader}>
-          <Icon
+          <NativeIcon
             name={isConnected ? 'bluetooth-connected' : 'bluetooth'}
             size={24}
             color={
@@ -149,7 +149,7 @@ const SettingsScreen: React.FC = () => {
       {/* Scan for Devices Card */}
       <View style={settingsScreenStyles.settingCard}>
         <View style={settingsScreenStyles.settingHeader}>
-          <Icon
+          <NativeIcon
             name="settings"
             size={24}
             color={theme.colors.textSecondary}
@@ -183,7 +183,7 @@ const SettingsScreen: React.FC = () => {
       {discoveredDevices.length > 0 && (
         <View style={settingsScreenStyles.settingCard}>
           <View style={settingsScreenStyles.settingHeader}>
-            <Icon
+            <NativeIcon
               name="devices"
               size={24}
               color={theme.colors.textSecondary}
@@ -216,7 +216,7 @@ const SettingsScreen: React.FC = () => {
                   </Text>
                   <Text style={settingsScreenStyles.deviceId}>{device.id}</Text>
                 </View>
-                <Icon
+                <NativeIcon
                   name="chevron-right"
                   size={20}
                   color={theme.colors.textSecondary}

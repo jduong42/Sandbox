@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import NativeIcon from '../../common/NativeIcon';
 import { Card } from '../../common/Card';
 import { theme } from '../../../theme';
 import { settingsScreenStyles } from '../../../theme/styles';
@@ -28,7 +28,7 @@ export const ConnectionCard: React.FC<ConnectionCardProps> = ({
   return (
     <Card>
       <View style={settingsScreenStyles.settingHeader}>
-        <Icon
+        <NativeIcon
           name={isConnected ? 'bluetooth-connected' : 'bluetooth'}
           size={24}
           color={
