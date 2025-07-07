@@ -13,6 +13,16 @@ import LogViewerScreen from '../screens/LogViewerScreen';
 
 const Tab = createBottomTabNavigator();
 
+// Icon mapping for better maintainability
+const TAB_ICONS = {
+  Home: 'home',
+  Training: 'fitness-center',
+  Data: 'bar-chart',
+  SML: 'psychology',
+  Settings: 'settings',
+  Logs: 'article',
+} as const;
+
 const MainTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
@@ -26,32 +36,16 @@ const MainTabNavigator: React.FC = () => {
           color: string;
           size: number;
         }) => {
-          let iconName: string;
+          const iconName =
+            TAB_ICONS[route.name as keyof typeof TAB_ICONS] || 'help';
 
-          switch (route.name) {
-            case 'Home':
-              iconName = 'home';
-              break;
-            case 'Training':
-              iconName = 'fitness-center';
-              break;
-            case 'Data':
-              iconName = 'bar-chart';
-              break;
-            case 'SML':
-              iconName = 'psychology';
-              break;
-            case 'Settings':
-              iconName = 'settings';
-              break;
-            case 'Logs':
-              iconName = 'article';
-              break;
-            default:
-              iconName = 'help';
-          }
-
-          return <NativeIcon name={iconName} size={size} color={color} />;
+          return (
+            <NativeIcon
+              name={iconName}
+              size={Math.max(size + 2, 24)}
+              color={focused ? theme.colors.primary : color}
+            />
+          );
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textSecondary,

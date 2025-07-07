@@ -15,7 +15,7 @@ const NativeIcon: React.FC<{
         case 'home':
           return '⌂';
         case 'fitness-center':
-          return '💪';
+          return '🏃‍♂️';
         case 'show-chart':
           return '📊';
         case 'bar-chart':
@@ -27,7 +27,7 @@ const NativeIcon: React.FC<{
         case 'description':
           return '📄';
         case 'article':
-          return '📄';
+          return '�';
         case 'psychology':
           return '🧠';
         case 'psychology-alt':
@@ -83,7 +83,7 @@ const NativeIcon: React.FC<{
         case 'home':
           return '🏠';
         case 'fitness-center':
-          return '🏋️';
+          return '�‍♂️';
         case 'show-chart':
           return '📈';
         case 'bar-chart':
@@ -95,7 +95,7 @@ const NativeIcon: React.FC<{
         case 'description':
           return '📝';
         case 'article':
-          return '📄';
+          return '�';
         case 'psychology':
           return '🧠';
         case 'psychology-alt':
