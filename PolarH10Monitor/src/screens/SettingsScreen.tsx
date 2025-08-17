@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,8 +14,12 @@ import { useBLEScanning, useDeviceHistory } from '../hooks';
 import { DeviceHistoryCard } from '../components/ble/SimpleDeviceHistoryCard';
 import { StoredDevice, deviceHistoryService } from '../services';
 import { logger } from '../utils/logger';
+import { simplifiedTextGenerationService } from '../services/SimplifiedTextGenerationService';
 
 const SettingsScreen: React.FC = () => {
+  const [onnxTestResult, setOnnxTestResult] = useState<string>('');
+  const [onnxTesting, setOnnxTesting] = useState(false);
+
   const {
     isScanning,
     isConnected,
@@ -78,6 +82,39 @@ const SettingsScreen: React.FC = () => {
         'Could not connect to the device. Please make sure it is nearby and powered on.',
         [{ text: 'OK' }],
       );
+    }
+  };
+
+  const runONNXQuickTest = async () => {
+    setOnnxTesting(true);
+    setOnnxTestResult('🤖 Initializing ONNX service...');
+
+    try {
+      await simplifiedTextGenerationService.initialize();
+      setOnnxTestResult('✅ ONNX initialized! Testing sports question...');
+
+      const question = 'What is a good heart rate for moderate exercise?';
+      const startTime = Date.now();
+
+      const response =
+        await simplifiedTextGenerationService.generateSportsAdvice(
+          question,
+          100, // maxTokens
+        );
+
+      const endTime = Date.now();
+      setOnnxTestResult(
+        `💬 Response: "${response.generatedText}"\n⏱️ Time: ${
+          endTime - startTime
+        }ms\n🎉 Test completed!`,
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setOnnxTestResult(`❌ Error: ${errorMessage}`);
+      logger.error('ONNX Test Error:', error);
+    } finally {
+      setOnnxTesting(false);
     }
   };
 
@@ -177,6 +214,60 @@ const SettingsScreen: React.FC = () => {
             {isScanning ? 'Scanning...' : 'Scan'}
           </Text>
         </TouchableOpacity>
+      </View>
+
+      {/* ONNX AI Model Test Card */}
+      <View style={settingsScreenStyles.settingCard}>
+        <View style={settingsScreenStyles.settingHeader}>
+          <NativeIcon
+            name="stats-chart"
+            size={24}
+            color={theme.colors.textSecondary}
+            style={settingsScreenStyles.settingIcon}
+          />
+          <View style={settingsScreenStyles.settingTextContainer}>
+            <Text style={settingsScreenStyles.settingTitle}>
+              🧠 AI Model Test
+            </Text>
+            <Text style={settingsScreenStyles.settingDescription}>
+              Test the sports science AI model{'\n'}with a quick question.
+            </Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[
+            settingsScreenStyles.scanButton,
+            onnxTesting && settingsScreenStyles.scanButtonDisabled,
+          ]}
+          onPress={runONNXQuickTest}
+          disabled={onnxTesting}
+        >
+          <Text style={settingsScreenStyles.scanButtonText}>
+            {onnxTesting ? '🤖 Testing...' : '🚀 Test AI Model'}
+          </Text>
+        </TouchableOpacity>
+
+        {onnxTestResult ? (
+          <View
+            style={{
+              marginTop: 15,
+              padding: 10,
+              backgroundColor: '#f5f5f5',
+              borderRadius: 8,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 12,
+                color: theme.colors.textSecondary,
+                lineHeight: 18,
+              }}
+            >
+              {onnxTestResult}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {/* Known Devices Card */}

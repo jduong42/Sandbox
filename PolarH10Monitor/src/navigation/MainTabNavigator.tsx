@@ -6,6 +6,7 @@ import {
   HomeScreen,
   DataScreen,
   SMLScreen,
+  ONNXTestScreen,
   SettingsScreen,
   TrainingDataScreen,
 } from '../screens';
@@ -19,6 +20,7 @@ const TAB_ICONS = {
   Training: 'fitness-center',
   Data: 'bar-chart',
   SML: 'psychology',
+  ONNX: 'memory', // Different icon for ONNX testing
   Settings: 'settings',
   Logs: 'article',
 } as const;
@@ -92,7 +94,12 @@ const MainTabNavigator: React.FC = () => {
       <Tab.Screen
         name="SML"
         component={SMLScreen}
-        options={{ title: 'AI Assistant' }}
+        options={{ title: 'AI Assistant (GGUF)' }}
+      />
+      <Tab.Screen
+        name="ONNX"
+        component={ONNXTestScreen}
+        options={{ title: 'ONNX Testing' }}
       />
       <Tab.Screen
         name="Settings"

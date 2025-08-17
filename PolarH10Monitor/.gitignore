@@ -73,3 +73,32 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# AI/ML Models (too large for git)
+*.onnx
+*.onnx_data
+*.gguf
+*.safetensors
+*.safetensors.index.json
+models/
+onnx_models/
+assets/models/
+ios/PolarH10Monitor/models/
+ios/distilgpt2_sports_science*.gguf
+ios/model*.onnx*
+ios/model_metadata*.json
+
+# Model tokenizer and config files (can be large)
+ios/vocab.json
+ios/merges.txt
+ios/tokenizer.json
+ios/added_tokens.json
+ios/special_tokens_map.json
+ios/tokenizer_config.json
+ios/config.json
+ios/generation_config.json
+ios/chat_template.jinja
+
+# Additional DS_Store files
+../.DS_Store
+**/.DS_Store
