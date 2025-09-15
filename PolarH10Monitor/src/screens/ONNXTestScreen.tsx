@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { Card } from '../components/common/Card';
 import { ONNXModelManager } from '../services/ONNXModelManager';
@@ -84,6 +86,11 @@ const ONNXTestScreen: React.FC = () => {
   const [testResults, setTestResults] = useState<ONNXTestResults>({});
   const [modelInfo, setModelInfo] = useState<ModelInfo | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+
+  // Custom prompt testing state
+  const [customPrompt, setCustomPrompt] = useState<string>('');
+  const [customResult, setCustomResult] = useState<string>('');
+  const [isTestingCustom, setIsTestingCustom] = useState<boolean>(false);
 
   const runTests = async () => {
     setIsRunning(true);
@@ -292,7 +299,7 @@ const ONNXTestScreen: React.FC = () => {
           const result =
             await simplifiedTextGenerationService.generateSportsAdvice(
               prompt,
-              150, // Generate 150 tokens for complete, comprehensive responses
+              180, // Generate 180 tokens for complete, comprehensive responses
             );
 
           const testResult: MultiPromptResult = {
@@ -411,6 +418,57 @@ const ONNXTestScreen: React.FC = () => {
     }
   };
 
+  const testCustomPrompt = async () => {
+    if (!customPrompt.trim()) {
+      Alert.alert('Error', 'Please enter a prompt to test');
+      return;
+    }
+
+    setIsTestingCustom(true);
+    setCustomResult('🚀 Initializing service...');
+
+    try {
+      // First, initialize the service if not already initialized
+      console.log('🔧 Initializing SimplifiedTextGenerationService...');
+      const initialized = await simplifiedTextGenerationService.initialize();
+
+      if (!initialized) {
+        setCustomResult(
+          '❌ Error: Failed to initialize ONNX service. Please check if model files are available.',
+        );
+        return;
+      }
+
+      setCustomResult('🤖 Generating response...');
+      console.log('🎯 Testing custom prompt:', customPrompt);
+
+      const result = await simplifiedTextGenerationService.generateSportsAdvice(
+        customPrompt.trim(),
+        180, // Use 180 tokens for more comprehensive responses
+      );
+
+      if (result.success) {
+        // Clean up the response text for better display
+        const cleanedText = result.generatedText
+          .replace(/\n\n+/g, '\n\n') // Normalize multiple newlines to double
+          .trim();
+
+        setCustomResult(
+          `✅ SUCCESS\n\n📝 Response:\n${cleanedText}\n\n📊 Stats: ${result.tokenCount} tokens | ⏱️ ${result.processingTime}ms`,
+        );
+      } else {
+        setCustomResult(`❌ Error: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Custom prompt test error:', error);
+      setCustomResult(
+        `❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    } finally {
+      setIsTestingCustom(false);
+    }
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header */}
@@ -421,6 +479,116 @@ const ONNXTestScreen: React.FC = () => {
           This screen tests ONNX runtime integration and checks for your
           fine-tuned model files.
         </Text>
+      </Card>
+
+      {/* Custom Prompt Test Section */}
+      <Card style={styles.card}>
+        <Text style={styles.sectionTitle}>🎯 Custom Prompt Test</Text>
+        <Text style={styles.description}>
+          Enter your own sports science question or prompt to test the model:
+        </Text>
+
+        <TextInput
+          style={[styles.input, { height: 100 }]}
+          placeholder="Enter your sports science question here... 
+
+Examples:
+• What heart rate zones should I target for marathon training?
+• How should I structure my recovery after HIIT workouts?
+• What's the optimal training schedule for improving VO2 max?
+• How can I prevent running injuries through proper training?"
+          value={customPrompt}
+          onChangeText={setCustomPrompt}
+          multiline
+          textAlignVertical="top"
+          editable={!isTestingCustom}
+        />
+
+        <TouchableOpacity
+          style={[
+            styles.button,
+            styles.primaryButton,
+            (isTestingCustom || !customPrompt.trim()) && styles.buttonDisabled,
+          ]}
+          onPress={testCustomPrompt}
+          disabled={isTestingCustom || !customPrompt.trim()}
+        >
+          <Text style={styles.buttonText}>
+            {isTestingCustom ? '🤔 Generating...' : '🚀 Test Custom Prompt'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Add a service status check button */}
+        <TouchableOpacity
+          style={[styles.button, styles.secondaryButton, { marginTop: 8 }]}
+          onPress={async () => {
+            setCustomResult('🔍 Checking service status...');
+            try {
+              const status = simplifiedTextGenerationService.getStatus();
+              const modelInfo = await ONNXModelManager.getModelInfo();
+              setCustomResult(`📊 Service Status:
+• Initialized: ${status.initialized ? '✅' : '❌'}
+• Session Ready: ${status.sessionReady ? '✅' : '❌'}
+• Model Exists: ${modelInfo.exists ? '✅' : '❌'}
+• Model Path: ${modelInfo.path || 'Not found'}
+${
+  modelInfo.size
+    ? `• Model Size: ${(modelInfo.size / (1024 * 1024)).toFixed(2)} MB`
+    : ''
+}`);
+            } catch (error) {
+              setCustomResult(
+                `❌ Status Check Error: ${
+                  error instanceof Error ? error.message : 'Unknown error'
+                }`,
+              );
+            }
+          }}
+        >
+          <Text style={styles.buttonText}>🔍 Check Service Status</Text>
+        </TouchableOpacity>
+
+        {/* Add manual initialization button */}
+        <TouchableOpacity
+          style={[styles.button, styles.successButton, { marginTop: 8 }]}
+          onPress={async () => {
+            setIsTestingCustom(true);
+            setCustomResult('🚀 Initializing ONNX service...');
+            try {
+              const initialized =
+                await simplifiedTextGenerationService.initialize();
+              if (initialized) {
+                setCustomResult(
+                  '✅ Service initialized successfully! You can now test custom prompts.',
+                );
+              } else {
+                setCustomResult(
+                  '❌ Failed to initialize service. Check model files and try again.',
+                );
+              }
+            } catch (error) {
+              setCustomResult(
+                `❌ Initialization Error: ${
+                  error instanceof Error ? error.message : 'Unknown error'
+                }`,
+              );
+            } finally {
+              setIsTestingCustom(false);
+            }
+          }}
+          disabled={isTestingCustom}
+        >
+          <Text style={styles.buttonText}>
+            {isTestingCustom ? '⏳ Initializing...' : '🚀 Initialize Service'}
+          </Text>
+        </TouchableOpacity>
+
+        {customResult ? (
+          <View style={styles.resultContainer}>
+            <Text style={styles.resultTitle}>Model Response:</Text>
+            <Text style={styles.resultText}>{customResult}</Text>
+          </View>
+        ) : null}
       </Card>
 
       {/* Action Buttons */}
@@ -1062,6 +1230,40 @@ const styles = StyleSheet.create({
   promptMetricsText: {
     fontSize: theme.typography.sizes.xs,
     color: theme.colors.textSecondary,
+  },
+  // Custom prompt styles
+  description: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+    lineHeight: 20,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: theme.spacing.md,
+    marginVertical: theme.spacing.sm,
+    fontSize: theme.typography.sizes.md,
+    backgroundColor: '#F9FAFB',
+    color: theme.colors.text,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  resultContainer: {
+    backgroundColor: '#F3F4F6',
+    padding: theme.spacing.md,
+    borderRadius: 8,
+    marginTop: theme.spacing.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.primary,
+  },
+  resultTitle: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
   },
 });
 

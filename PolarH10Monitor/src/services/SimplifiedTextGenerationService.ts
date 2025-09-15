@@ -1,8 +1,3 @@
-/**
- * Simplified Text Generation Service
- * Clean architecture based on Gemini's recommendation with proven ONNX loading
- */
-
 import { InferenceSession, Tensor } from 'onnxruntime-react-native';
 import { ONNXModelManager } from './ONNXModelManager';
 import {
@@ -30,6 +25,8 @@ class SimplifiedTextGenerationService {
   private static instance: SimplifiedTextGenerationService;
   private session: InferenceSession | null = null;
   private isInitialized = false;
+  private modelPath: string | null = null;
+  private isModelValidated = false;
 
   private constructor() {}
 
@@ -42,52 +39,234 @@ class SimplifiedTextGenerationService {
   }
 
   /**
-   * Initialize the service with ONNX model
+   * Initialize the service by validating model availability (lazy loading approach)
    */
   async initialize(): Promise<boolean> {
     try {
       logger.info('🚀 Initializing Simplified Text Generation Service...');
+      logger.info(
+        '📱 Device type: Physical iOS Device - Using lazy loading for memory efficiency',
+      );
 
-      // Use our proven model loading approach
-      const modelInfo = await ONNXModelManager.getModelInfo();
-      if (!modelInfo.exists || !modelInfo.path) {
-        logger.error('❌ Model files not found');
+      // Validate model exists but don't load it yet (lazy loading)
+      const modelManager = ONNXModelManager.getInstance();
+      const initResult = await modelManager.initialize();
+
+      if (!initResult) {
+        logger.error('❌ ONNXModelManager initialization failed');
         return false;
       }
 
-      logger.info('🧠 Loading ONNX model...');
-      this.session = await InferenceSession.create(modelInfo.path);
+      const modelInfo = await modelManager.getModelInfo();
 
+      // Detailed logging for debugging
+      logger.info(
+        `📊 Model info: exists=${modelInfo.exists}, path="${modelInfo.path}"`,
+      );
+
+      if (!modelInfo.exists || !modelInfo.path) {
+        logger.error(
+          '❌ Model files not found in bundle - this is the cause of the crash!',
+        );
+        logger.error(
+          '💡 Solution: Add model.onnx and model.onnx_data to Xcode project bundle resources',
+        );
+        return false;
+      }
+
+      // Store model path but don't load yet (lazy loading for memory efficiency)
+      this.modelPath = modelInfo.path;
+      this.isModelValidated = true;
+
+      logger.info(`� Model path validated: ${modelInfo.path}`);
+      logger.info(
+        '💾 LAZY LOADING: Model will be loaded only when text generation is requested',
+      );
       logger.info(
         `✅ Using extracted vocabulary with ${VOCABULARY_INFO.vocabSize} tokens`,
       );
 
       this.isInitialized = true;
       logger.info(
-        '✅ Simplified Text Generation Service initialized successfully',
+        '✅ Simplified Text Generation Service initialized successfully (lazy loading mode)',
       );
       return true;
     } catch (error) {
       logger.error('❌ Failed to initialize text generation service:', error);
+
+      // Enhanced error reporting for device debugging
+      if (error instanceof Error) {
+        logger.error(`🔍 Error name: ${error.name}`);
+        logger.error(`🔍 Error message: ${error.message}`);
+        logger.error(`🔍 Error stack: ${error.stack}`);
+
+        // Specific error guidance
+        if (
+          error.message.includes('No such file') ||
+          error.message.includes('ENOENT')
+        ) {
+          logger.error(
+            '� SOLUTION: Model files are not included in app bundle!',
+          );
+          logger.error('📋 Steps:');
+          logger.error('   1. Open ios/PolarH10Monitor.xcworkspace in Xcode');
+          logger.error('   2. Select project → target → Build Phases');
+          logger.error(
+            '   3. Add model.onnx and model.onnx_data to "Copy Bundle Resources"',
+          );
+          logger.error('   4. Clean and rebuild');
+        }
+      }
+
       this.isInitialized = false;
       return false;
     }
   }
 
   /**
-   * Enhanced sports science text generation with proper prompt handling
+   * Lazy load the ONNX session only when needed
+   */
+  private async loadModelSession(): Promise<boolean> {
+    if (this.session) {
+      return true; // Already loaded
+    }
+
+    if (!this.modelPath || !this.isModelValidated) {
+      logger.error('❌ Model not validated. Call initialize() first.');
+      return false;
+    }
+
+    try {
+      this.logMemoryUsage('Before Model Load');
+
+      logger.info('🧠 Lazy loading ONNX model session...');
+      logger.info(
+        '🔧 Creating ONNX session with memory-conservative approach...',
+      );
+
+      // Load model session only when needed
+      this.session = await InferenceSession.create(this.modelPath);
+
+      this.logMemoryUsage('After Model Load');
+      logger.info('✅ ONNX session loaded successfully via lazy loading');
+      return true;
+    } catch (sessionError) {
+      this.logMemoryUsage('Model Load Failed');
+
+      logger.error('❌ ONNX session creation failed:', sessionError);
+      logger.error(
+        '🔍 This suggests model file corruption, incorrect format, or insufficient memory',
+      );
+
+      // Enhanced error information for memory issues
+      if (sessionError instanceof Error) {
+        if (
+          sessionError.message.includes('memory') ||
+          sessionError.message.includes('alloc')
+        ) {
+          logger.error('� MEMORY ERROR DETECTED:');
+          logger.error('   • The ONNX model is too large for this iOS device');
+          logger.error('   • Consider using a smaller, quantized model');
+          logger.error(
+            '   • Current model may exceed iOS app memory limits (~3GB)',
+          );
+        }
+      }
+
+      return false;
+    }
+  }
+
+  /**
+   * Dispose of the ONNX session to free memory
+   */
+  private async disposeSession(): Promise<void> {
+    if (this.session) {
+      try {
+        // Note: ONNX Runtime React Native may not have explicit dispose method
+        // Setting to null allows garbage collection
+        this.session = null;
+        this.logMemoryUsage('After Session Disposal');
+        logger.info('🗑️ ONNX session disposed to free memory');
+      } catch (error) {
+        logger.warn('⚠️ Error disposing ONNX session:', error);
+      }
+    }
+  }
+
+  /**
+   * Log memory usage context for debugging (simplified for React Native)
+   */
+  private logMemoryUsage(context: string): void {
+    try {
+      // Since React Native doesn't have direct memory APIs,
+      // we'll log context-based warnings for memory-intensive operations
+      const timestamp = new Date().toISOString();
+      logger.info(`📊 Memory Context [${context}] at ${timestamp}`);
+
+      // Log model lifecycle warnings
+      if (context === 'Before Model Load') {
+        logger.info(
+          '⚠️ About to load large ONNX model - monitor for memory pressure',
+        );
+      } else if (context === 'After Model Load') {
+        logger.info(
+          '✅ Model loaded - if app becomes slow, model may be too large',
+        );
+      } else if (context === 'After Session Disposal') {
+        logger.info(
+          '♻️ Model session disposed - memory should be freed for garbage collection',
+        );
+      } else if (context === 'Model Load Failed') {
+        logger.info(
+          '❌ Model load failed - likely due to insufficient memory on device',
+        );
+      }
+    } catch (error) {
+      logger.debug('Unable to log memory context:', error);
+    }
+  }
+
+  /**
+   * Enhanced sports science text generation with lazy loading and memory management
    */
   async generateSportsAdvice(
     prompt: string,
-    maxTokens: number = 150,
+    maxTokens: number = 180,
   ): Promise<TextGenerationResult> {
-    if (!this.isInitialized || !this.session) {
+    if (!this.isInitialized || !this.isModelValidated) {
+      const errorMessage =
+        'Service not initialized - likely model files not found in app bundle';
+
+      logger.error(`❌ Cannot generate advice: ${errorMessage}`);
+      logger.error('💡 This is why the app crashes on physical device!');
+
       return {
         success: false,
-        generatedText: '',
+        generatedText:
+          'Unable to generate advice. Model files may not be included in app bundle. Please check Xcode project configuration.',
         tokenCount: 0,
         processingTime: 0,
-        error: 'Service not initialized',
+        error: errorMessage,
+      };
+    }
+
+    // Lazy load the model session only when needed
+    logger.info('🔄 Loading model session for text generation...');
+    const sessionLoaded = await this.loadModelSession();
+
+    if (!sessionLoaded || !this.session) {
+      const errorMessage =
+        'Failed to load ONNX session - likely memory constraints on iOS device';
+      logger.error(`❌ Cannot generate advice: ${errorMessage}`);
+
+      return {
+        success: false,
+        generatedText:
+          'Unable to generate advice. The AI model may be too large for this device. Please try restarting the app or use a smaller prompt.',
+        tokenCount: 0,
+        processingTime: 0,
+        error: errorMessage,
       };
     }
 
@@ -95,10 +274,35 @@ class SimplifiedTextGenerationService {
 
     try {
       logger.info(`🏃‍♂️ Generating sports science advice for: "${prompt}"`);
+      logger.info(`🧠 Session state: ${this.session ? 'available' : 'null'}`);
+      logger.info(`📱 Platform: iOS Device - Enhanced error handling enabled`);
 
       // Create a structured sports science prompt using the actual user prompt
       const sportsPrompt = `<|im_start|>system
-You are a sports science expert. Provide specific, accurate advice about training, heart rate zones, and exercise physiology. Give concrete numbers and actionable guidance.
+You are a professional sports scientist. Your purpose is to provide objective, data-driven, and actionable advice to optimize training and performance.
+
+You can provide heart rate zone guidance using percentage ranges of a maximum heart rate, but **only when the user's query relates to training intensity, endurance, or performance**. Avoid using specific BPM numbers. Use these general ranges:
+* **Zone 1 (Very Light):** Approximately 50-60% of your maximum heart rate.
+* **Zone 2 (Light):** Approximately 60-70% of your maximum heart rate.
+* **Zone 3 (Moderate):** Approximately 70-80% of your maximum heart rate.
+* **Zone 4 (Hard):** Approximately 80-90% of your maximum heart rate.
+* **Zone 5 (Maximum Effort):** Above 90% of your maximum heart rate.
+
+In your guidance, describe the physiological state associated with each intensity level. For example:
+* "This intensity level corresponds to a state where verbal communication is readily achievable."
+* "The effort should feel significant, but not so high that breathing is a struggle."
+* "You will be out of breath, with speaking limited to single words."
+
+Your responses must be a single, flowing paragraph. Do not use bullet points, numbered lists, or rhetorical questions. To make the information more scannable, **bold key terms, metrics, and final recommendations**.
+Provide a mix of practical advice and the scientific principles behind it, all presented in an easy-to-understand, analytical manner.
+
+**Always integrate other key performance indicators when possible. Acknowledge the importance of subjective measures like Rate of Perceived Exertion (RPE), and holistic factors like sleep, recovery, and nutrition, as they directly impact physiological responses.**
+
+**Also, remember to acknowledge that a user's maximum heart rate is often an estimate and that more accurate testing can provide a more personalized basis for training zones.**
+
+**Always conclude your response with a clear and prominent safety disclaimer, stating that this advice is for informational purposes only and users should consult a healthcare professional if they feel unwell, experience discomfort, or have any health-related concerns.**
+
+**If your response includes a training plan, load recommendation, or any other actionable advice, also add a concluding sentence encouraging the user to seek a second opinion from a qualified professional, such as a coach, physical therapist, or sports physician, to ensure the plan is appropriate for their individual needs.**
 <|im_end|>
 <|im_start|>user
 ${prompt}
@@ -106,8 +310,38 @@ ${prompt}
 <|im_start|>assistant
 `;
 
-      // Use a simple but better prompt tokenization
-      const inputTokens = this.tokenizeWithExtractedVocab(sportsPrompt);
+      logger.info(
+        `🔤 About to tokenize prompt of length: ${sportsPrompt.length}`,
+      );
+      logger.info(`📝 Full system prompt: "${sportsPrompt}"`);
+
+      // Use a simple but better prompt tokenization with error handling
+      let inputTokens: number[] = [];
+      try {
+        inputTokens = this.tokenizeWithExtractedVocab(sportsPrompt);
+        logger.info(`✅ Tokenization successful: ${inputTokens.length} tokens`);
+      } catch (tokenError) {
+        logger.error('❌ Tokenization failed:', tokenError);
+        return {
+          success: false,
+          generatedText: '',
+          tokenCount: 0,
+          processingTime: Date.now() - startTime,
+          error: `Tokenization failed: ${tokenError}`,
+        };
+      }
+
+      if (inputTokens.length === 0) {
+        logger.error('❌ Tokenization produced empty token array');
+        return {
+          success: false,
+          generatedText: '',
+          tokenCount: 0,
+          processingTime: Date.now() - startTime,
+          error: 'Tokenization produced empty result',
+        };
+      }
+
       const generatedTokens: number[] = [];
 
       logger.info(`📝 Sports prompt: ${inputTokens.length} tokens`);
@@ -115,9 +349,26 @@ ${prompt}
       // Start with initial sequence
       let currentSequence = [...inputTokens];
 
+      // Safety check: Limit sequence length on physical devices to prevent memory crashes
+      const MAX_SEQUENCE_LENGTH = 200; // Increased limit to avoid truncating important system prompts
+      if (currentSequence.length > MAX_SEQUENCE_LENGTH) {
+        logger.warn(
+          `⚠️  Truncating input sequence from ${currentSequence.length} to ${MAX_SEQUENCE_LENGTH} tokens for device stability`,
+        );
+        currentSequence = currentSequence.slice(-MAX_SEQUENCE_LENGTH);
+      }
+
       // Generate tokens for complete sports advice
       for (let step = 0; step < maxTokens; step++) {
         logger.info(`🔄 Generation step ${step + 1}/${maxTokens}`);
+
+        // Memory safety check during generation
+        if (currentSequence.length > MAX_SEQUENCE_LENGTH) {
+          logger.warn(
+            `⚠️  Truncating sequence during generation: ${currentSequence.length} -> ${MAX_SEQUENCE_LENGTH}`,
+          );
+          currentSequence = currentSequence.slice(-MAX_SEQUENCE_LENGTH);
+        }
 
         // Prepare tensors
         const batchSize = 1;
@@ -160,8 +411,43 @@ ${prompt}
           feeds[`past_key_values.${layer}.value`] = emptyCache;
         }
 
-        // Run inference
-        const results = await this.session.run(feeds);
+        logger.info(`🧠 About to run ONNX inference for step ${step + 1}`);
+        logger.info(
+          `📊 Sequence length: ${sequenceLength}, Batch size: ${batchSize}`,
+        );
+
+        // Run inference with error handling
+        let results;
+        try {
+          results = await this.session.run(feeds);
+          logger.info(`✅ ONNX inference completed for step ${step + 1}`);
+        } catch (inferenceError) {
+          logger.error(
+            `❌ ONNX inference failed at step ${step + 1}:`,
+            inferenceError,
+          );
+          return {
+            success: false,
+            generatedText: '',
+            tokenCount: generatedTokens.length,
+            processingTime: Date.now() - startTime,
+            error: `Inference failed at step ${step + 1}: ${inferenceError}`,
+          };
+        }
+
+        if (!results || !results.logits) {
+          logger.error(
+            `❌ No logits returned from inference at step ${step + 1}`,
+          );
+          return {
+            success: false,
+            generatedText: '',
+            tokenCount: generatedTokens.length,
+            processingTime: Date.now() - startTime,
+            error: `No logits returned at step ${step + 1}`,
+          };
+        }
+
         const logits = results.logits as Tensor;
 
         // Get the next token (last token in sequence)
@@ -201,6 +487,9 @@ ${prompt}
       );
       logger.info(`🏆 Generated text: "${generatedText}"`);
 
+      // Dispose session to free memory after successful generation
+      await this.disposeSession();
+
       return {
         success: true,
         generatedText,
@@ -211,175 +500,43 @@ ${prompt}
       const processingTime = Date.now() - startTime;
       logger.error('❌ Sports advice generation failed:', error);
 
+      // Enhanced error reporting for device debugging
+      let errorMessage = 'Unknown error';
+      let errorDetails = '';
+
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        errorDetails = error.stack || '';
+        logger.error(`❌ Error name: ${error.name}`);
+        logger.error(`❌ Error message: ${error.message}`);
+        logger.error(`❌ Error stack: ${error.stack}`);
+      }
+
+      // Check if it's a specific ONNX or memory error
+      if (errorMessage.includes('memory') || errorMessage.includes('Memory')) {
+        logger.error(
+          '🧠 MEMORY ERROR detected - likely device memory limit exceeded',
+        );
+        errorMessage = 'Memory limit exceeded on device';
+      } else if (
+        errorMessage.includes('ONNX') ||
+        errorMessage.includes('tensor')
+      ) {
+        logger.error('🤖 ONNX/Tensor ERROR detected - model inference issue');
+        errorMessage = 'Model inference failed on device';
+      }
+
+      // Dispose session to free memory even on error
+      await this.disposeSession();
+
       return {
         success: false,
         generatedText: '',
         tokenCount: 0,
         processingTime,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: `Device Error: ${errorMessage}`,
       };
     }
-  }
-
-  /**
-   * Simple but effective tokenization using the extracted vocabulary
-   */
-  private tokenizeWithExtractedVocab(text: string): number[] {
-    // Create reverse lookup from token to ID
-    const tokenToId = new Map<string, number>();
-    Object.entries(ID_TO_TOKEN).forEach(([id, token]) => {
-      tokenToId.set(token, parseInt(id));
-    });
-
-    const tokens: number[] = [];
-
-    // Handle special tokens first
-    if (text.includes('<|im_start|>')) {
-      const parts = text.split('<|im_start|>');
-      for (let i = 0; i < parts.length; i++) {
-        if (i > 0) {
-          tokens.push(151644); // <|im_start|>
-        }
-        const part = parts[i];
-        if (part) {
-          tokens.push(...this.tokenizeText(part, tokenToId));
-        }
-      }
-    } else {
-      tokens.push(...this.tokenizeText(text, tokenToId));
-    }
-
-    logger.info(
-      `📝 Tokenized "${text.substring(0, 50)}..." into ${tokens.length} tokens`,
-    );
-    return tokens;
-  }
-
-  /**
-   * Tokenize regular text using greedy longest-match approach
-   */
-  private tokenizeText(text: string, tokenToId: Map<string, number>): number[] {
-    const tokens: number[] = [];
-    let remaining = text;
-
-    while (remaining.length > 0) {
-      let found = false;
-
-      // Try to find the longest matching token (greedy approach)
-      for (let len = Math.min(remaining.length, 20); len > 0; len--) {
-        const substr = remaining.substring(0, len);
-        const tokenId = tokenToId.get(substr);
-
-        if (tokenId !== undefined) {
-          tokens.push(tokenId);
-          remaining = remaining.substring(len);
-          found = true;
-          break;
-        }
-      }
-
-      if (!found) {
-        // Fallback: try single character or skip
-        const char = remaining.charAt(0);
-        const charId = tokenToId.get(char);
-        if (charId !== undefined) {
-          tokens.push(charId);
-        } else {
-          // Map to space if unknown
-          const spaceId = tokenToId.get('Ġ'); // BPE space token
-          if (spaceId !== undefined) {
-            tokens.push(spaceId);
-          }
-        }
-        remaining = remaining.substring(1);
-      }
-    }
-
-    return tokens;
-  }
-
-  /**
-   * Simple sports science specific tokenization (keeping for backwards compatibility)
-   */
-  private simpleSportsTokenize(text: string): number[] {
-    // For now, use a simple approximation
-    // In a real system, we'd use the actual Qwen tokenizer
-    const words = text.split(/\s+/);
-    const tokens: number[] = [];
-
-    // Map common sports science terms to approximate token IDs
-    const sportsTokenMap: { [key: string]: number } = {
-      '<|im_start|>': 151644,
-      '<|im_end|>': 151645,
-      system: 1159,
-      user: 872,
-      assistant: 29186,
-      sports: 6982,
-      science: 8198,
-      expert: 6429,
-      heart: 5537,
-      rate: 4478,
-      training: 4865,
-      exercise: 6534,
-      fitness: 17479,
-      zone: 10353,
-      intensity: 23800,
-      cardio: 5057,
-      strength: 8333,
-      muscle: 16124,
-      recovery: 14379,
-      performance: 5199,
-      nutrition: 26677,
-      hydration: 37636,
-      fatigue: 36709,
-      endurance: 49980,
-      speed: 4632,
-      power: 2410,
-      You: 1482,
-      are: 527,
-      a: 264,
-      Provide: 40665,
-      clear: 2870,
-      evidence: 6029,
-      based: 3196,
-      advice: 9650,
-      What: 3923,
-      How: 2650,
-      Why: 10445,
-      is: 374,
-      the: 279,
-      and: 323,
-      for: 369,
-      to: 311,
-      in: 304,
-      of: 315,
-      with: 449,
-      best: 1888,
-      optimal: 23669,
-      effective: 7524,
-      improve: 7417,
-      increase: 5376,
-      reduce: 8108,
-      prevent: 5471,
-      enhance: 18885,
-    };
-
-    for (const word of words) {
-      const cleanWord = word.trim();
-      if (cleanWord) {
-        const tokenId = sportsTokenMap[cleanWord];
-        if (tokenId !== undefined) {
-          tokens.push(tokenId);
-        } else {
-          // Use simple character-based approximation for unknown words
-          for (let i = 0; i < cleanWord.length; i++) {
-            tokens.push(cleanWord.charCodeAt(i) + 100);
-          }
-        }
-      }
-    }
-
-    return tokens;
   }
 
   /**
@@ -496,7 +653,7 @@ ${prompt}
         }
       }
 
-      // Enhanced detokenization using QwenTokenizerService
+      // Enhanced detokenization using extractedVocabulary
       const generatedText = await this.enhancedDetokenize(generatedTokens);
       const processingTime = Date.now() - startTime;
 
@@ -565,7 +722,84 @@ ${prompt}
   }
 
   /**
-   * Enhanced detokenization - convert token IDs back to text using CustomQWenTokenizer
+   * Simple but effective tokenization using the extracted vocabulary
+   */
+  private tokenizeWithExtractedVocab(text: string): number[] {
+    // Create reverse lookup from token to ID
+    const tokenToId = new Map<string, number>();
+    Object.entries(ID_TO_TOKEN).forEach(([id, token]) => {
+      tokenToId.set(token, parseInt(id));
+    });
+
+    const tokens: number[] = [];
+
+    // Handle special tokens first
+    if (text.includes('<|im_start|>')) {
+      const parts = text.split('<|im_start|>');
+      for (let i = 0; i < parts.length; i++) {
+        if (i > 0) {
+          tokens.push(151644); // <|im_start|>
+        }
+        const part = parts[i];
+        if (part) {
+          tokens.push(...this.tokenizeText(part, tokenToId));
+        }
+      }
+    } else {
+      tokens.push(...this.tokenizeText(text, tokenToId));
+    }
+
+    logger.info(
+      `📝 Tokenized "${text.substring(0, 50)}..." into ${tokens.length} tokens`,
+    );
+    return tokens;
+  }
+
+  /**
+   * Tokenize regular text using greedy longest-match approach
+   */
+  private tokenizeText(text: string, tokenToId: Map<string, number>): number[] {
+    const tokens: number[] = [];
+    let remaining = text;
+
+    while (remaining.length > 0) {
+      let found = false;
+
+      // Try to find the longest matching token (greedy approach)
+      for (let len = Math.min(remaining.length, 20); len > 0; len--) {
+        const substr = remaining.substring(0, len);
+        const tokenId = tokenToId.get(substr);
+
+        if (tokenId !== undefined) {
+          tokens.push(tokenId);
+          remaining = remaining.substring(len);
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        // Fallback: try single character or skip
+        const char = remaining.charAt(0);
+        const charId = tokenToId.get(char);
+        if (charId !== undefined) {
+          tokens.push(charId);
+        } else {
+          // Map to space if unknown
+          const spaceId = tokenToId.get('Ġ'); // BPE space token
+          if (spaceId !== undefined) {
+            tokens.push(spaceId);
+          }
+        }
+        remaining = remaining.substring(1);
+      }
+    }
+
+    return tokens;
+  }
+
+  /**
+   * Enhanced detokenization - convert token IDs back to text using extractedVocabulary
    */
   private async enhancedDetokenize(tokens: number[]): Promise<string> {
     try {
@@ -591,57 +825,6 @@ ${prompt}
       const tokenDisplay = tokens.map(t => `[${t}]`).join(' ');
       return `Tokens: ${tokenDisplay}`;
     }
-  }
-
-  /**
-   * Check if token represents punctuation
-   */
-  private isPunctuation(token: number): boolean {
-    const punctuationTokens = [13, 11, 30, 0, 25, 26]; // . , ? ! : ;
-    return punctuationTokens.includes(token);
-  }
-
-  /**
-   * Simple detokenization - convert token IDs back to text
-   */
-  private simpleDetokenize(tokens: number[]): string {
-    // Basic mapping for common tokens (sports science domain)
-    const tokenMap: { [key: number]: string } = {
-      151644: '<|im_start|>',
-      151645: '<|im_end|>',
-      198: '\n',
-      220: ' ',
-      39: 'A',
-      50: '2',
-      51: '3',
-      527: 'are',
-      706: 'heart',
-      4618: 'rate',
-      2593: 'training',
-      36779: 'zones',
-      1276: 'for',
-      24635: 'endurance',
-      16048: 'improvement',
-      6511: 'based',
-      389: 'on',
-      701: 'your',
-      4325: 'age',
-      323: 'and',
-      17479: 'fitness',
-      2237: 'level',
-    };
-
-    let result = '';
-    for (const token of tokens) {
-      if (tokenMap[token]) {
-        result += tokenMap[token];
-      } else {
-        // For unknown tokens, use a placeholder
-        result += `[${token}]`;
-      }
-    }
-
-    return result.trim();
   }
 
   /**
@@ -762,24 +945,6 @@ ${prompt}
   }
 
   /**
-   * Simple greedy sampling (kept for fallback)
-   */
-  private greedySample(logits: Float32Array): number {
-    let maxIndex = 0;
-    let maxValue = -Infinity;
-
-    for (let i = 0; i < logits.length; i++) {
-      const logitValue = logits[i];
-      if (logitValue !== undefined && logitValue > maxValue) {
-        maxValue = logitValue;
-        maxIndex = i;
-      }
-    }
-
-    return maxIndex;
-  }
-
-  /**
    * Get service status
    */
   getStatus(): { initialized: boolean; sessionReady: boolean } {
@@ -797,6 +962,9 @@ ${prompt}
 
     // Remove common formatting artifacts
     cleaned = cleaned
+      // Remove the problematic ĊĊ characters (these are BPE encoding artifacts)
+      .replace(/ĊĊ/g, '\n\n') // Replace with double newline for paragraphs
+      .replace(/Ċ/g, '\n') // Replace single Ċ with newline
       // Remove standalone C1, C2, C3, etc. (citation markers)
       .replace(/\bC\d+\b\.?\s*/g, '')
       // Remove CC patterns
@@ -805,8 +973,9 @@ ${prompt}
       .replace(/\s+\d+\.\s*$/, '')
       // Remove trailing incomplete words
       .replace(/\s+\w{1,2}$/, '')
-      // Clean up extra spaces
+      // Clean up extra spaces and normalize whitespace
       .replace(/\s+/g, ' ')
+      .replace(/\n\s+/g, '\n')
       // Remove leading/trailing whitespace
       .trim();
 

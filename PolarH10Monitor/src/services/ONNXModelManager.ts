@@ -8,7 +8,7 @@ import { logger } from '../utils/logger';
 
 export class ONNXModelManager {
   private static instance: ONNXModelManager;
-  private modelPath: string | null = null;
+  private modelPath = 'model.onnx';
   private isModelReady = false;
 
   private constructor() {}
@@ -35,9 +35,27 @@ export class ONNXModelManager {
       const dataExists = await RNFS.exists(bundleDataPath);
 
       if (modelExists && dataExists) {
+        // Check model file sizes before declaring ready
+        const modelSizeCheck = await this.checkModelSize(
+          bundleModelPath,
+          bundleDataPath,
+        );
+        if (!modelSizeCheck.safe) {
+          logger.warn(
+            '⚠️ Model files found but may be too large for iOS device:',
+          );
+          logger.warn(`📏 Total size: ${modelSizeCheck.totalSizeMB}MB`);
+          logger.warn(
+            '💡 Recommended maximum: 500MB for stable iOS performance',
+          );
+          logger.warn('🚀 Consider using a quantized or smaller model variant');
+        }
+
         this.modelPath = bundleModelPath;
         this.isModelReady = true;
-        logger.info('✅ ONNX model files found in bundle');
+        logger.info(
+          `✅ ONNX model files found in bundle (${modelSizeCheck.totalSizeMB}MB total)`,
+        );
         return true;
       }
 
@@ -49,9 +67,26 @@ export class ONNXModelManager {
       const docDataExists = await RNFS.exists(documentsDataPath);
 
       if (docModelExists && docDataExists) {
+        // Check model file sizes in documents directory too
+        const modelSizeCheck = await this.checkModelSize(
+          documentsModelPath,
+          documentsDataPath,
+        );
+        if (!modelSizeCheck.safe) {
+          logger.warn(
+            '⚠️ Downloaded model files may be too large for iOS device:',
+          );
+          logger.warn(`📏 Total size: ${modelSizeCheck.totalSizeMB}MB`);
+          logger.warn(
+            '💡 Recommended maximum: 500MB for stable iOS performance',
+          );
+        }
+
         this.modelPath = documentsModelPath;
         this.isModelReady = true;
-        logger.info('✅ ONNX model files found in documents directory');
+        logger.info(
+          `✅ ONNX model files found in documents directory (${modelSizeCheck.totalSizeMB}MB total)`,
+        );
         return true;
       }
 
@@ -168,6 +203,51 @@ export class ONNXModelManager {
       return {
         exists: false,
         location: 'error',
+      };
+    }
+  }
+
+  /**
+   * Check model file sizes and determine if safe for iOS device
+   */
+  private async checkModelSize(
+    modelPath: string,
+    dataPath: string,
+  ): Promise<{
+    safe: boolean;
+    totalSizeMB: number;
+    modelSizeMB: number;
+    dataSizeMB: number;
+  }> {
+    try {
+      const modelStats = await RNFS.stat(modelPath);
+      const dataStats = await RNFS.stat(dataPath);
+
+      const modelSizeBytes = Number(modelStats.size);
+      const dataSizeBytes = Number(dataStats.size);
+      const totalSizeBytes = modelSizeBytes + dataSizeBytes;
+
+      const modelSizeMB = Math.round(modelSizeBytes / (1024 * 1024));
+      const dataSizeMB = Math.round(dataSizeBytes / (1024 * 1024));
+      const totalSizeMB = Math.round(totalSizeBytes / (1024 * 1024));
+
+      // iOS apps typically have 3GB memory limit, recommend max 500MB for models
+      // to leave room for app operations and avoid jetsam kills
+      const safe = totalSizeMB <= 500;
+
+      return {
+        safe,
+        totalSizeMB,
+        modelSizeMB,
+        dataSizeMB,
+      };
+    } catch (error) {
+      logger.error('❌ Failed to check model file sizes:', error);
+      return {
+        safe: false,
+        totalSizeMB: 0,
+        modelSizeMB: 0,
+        dataSizeMB: 0,
       };
     }
   }
