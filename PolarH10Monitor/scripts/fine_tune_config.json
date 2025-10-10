@@ -1,0 +1,30 @@
+{
+  "base_model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+  "task": "sports_science_specialization",
+  "method": "lora",
+  "output_format": "gguf",
+  "lora_config": {
+    "r": 16,
+    "alpha": 32,
+    "dropout": 0.1,
+    "target_modules": [
+      "q_proj",
+      "k_proj",
+      "v_proj",
+      "o_proj",
+      "gate_proj",
+      "up_proj",
+      "down_proj"
+    ]
+  },
+  "training_config": {
+    "learning_rate": 0.0002,
+    "batch_size": 4,
+    "gradient_accumulation_steps": 4,
+    "num_epochs": 3,
+    "warmup_steps": 100,
+    "save_steps": 500,
+    "eval_steps": 500,
+    "max_seq_length": 2048
+  }
+}

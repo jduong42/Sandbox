@@ -82,6 +82,7 @@ yarn-error.log
 *.safetensors.index.json
 models/
 onnx_models/
+deepseek_models/
 assets/models/
 ios/PolarH10Monitor/models/
 ios/distilgpt2_sports_science*.gguf
@@ -98,6 +99,12 @@ ios/tokenizer_config.json
 ios/config.json
 ios/generation_config.json
 ios/chat_template.jinja
+
+# Large model files in iOS and Android
+ios/*.gguf
+android/app/src/main/assets/models/
+android/app/src/main/assets/*.gguf
+android/app/src/main/assets/*.onnx
 
 # Additional DS_Store files
 ../.DS_Store

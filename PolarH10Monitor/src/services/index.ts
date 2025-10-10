@@ -4,10 +4,8 @@ export { heartRateService } from './HeartRateService';
 export { deviceHistoryService } from './DeviceHistoryService';
 export { sessionRecordingService } from './SessionRecordingService';
 
-// ONNX and Fine-tuned AI Services
-export { onnxModelManager } from './ONNXModelManager';
-export { simplifiedTextGenerationService } from './SimplifiedTextGenerationService';
-export { decodeTokenIds, VOCABULARY_INFO } from './extractedVocabulary';
+// Llama.rn AI Services
+export { llamaTextGenerationService } from './LlamaTextGenerationService';
 
 // Export types and interfaces
 export type {

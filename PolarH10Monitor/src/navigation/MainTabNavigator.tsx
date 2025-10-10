@@ -6,7 +6,7 @@ import {
   HomeScreen,
   DataScreen,
   SMLScreen,
-  ONNXTestScreen,
+  LlamaTestScreen,
   SettingsScreen,
   TrainingDataScreen,
 } from '../screens';
@@ -20,7 +20,7 @@ const TAB_ICONS = {
   Training: 'fitness-center',
   Data: 'bar-chart',
   SML: 'psychology',
-  ONNX: 'memory', // Different icon for ONNX testing
+  Llama: 'smart-toy', // Llama.rn testing
   Settings: 'settings',
   Logs: 'article',
 } as const;
@@ -97,9 +97,9 @@ const MainTabNavigator: React.FC = () => {
         options={{ title: 'AI Assistant (GGUF)' }}
       />
       <Tab.Screen
-        name="ONNX"
-        component={ONNXTestScreen}
-        options={{ title: 'ONNX Testing' }}
+        name="Llama"
+        component={LlamaTestScreen}
+        options={{ title: 'Llama Testing' }}
       />
       <Tab.Screen
         name="Settings"
