@@ -109,3 +109,24 @@ android/app/src/main/assets/*.onnx
 # Additional DS_Store files
 ../.DS_Store
 **/.DS_Store
+
+# Python virtual environments
+venv/
+.venv/
+./.venv/
+/venv/
+env/
+.env/
+
+# Fine-tuning artifacts
+scripts/deepseek-sports-lora/
+scripts/deepseek-sports-lora-final/
+scripts/deepseek-sports-merged/
+scripts/GGUF_CONVERSION_GUIDE.md
+scripts/*.log
+scripts/wandb/
+scripts/runs/
+
+# Pip installation artifacts
+scripts/=*
+**/=*
