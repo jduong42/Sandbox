@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3EBEBCA4CE72B0EA9C57FE3A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
-		62B29F712E966D6200600D4E /* DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf in Resources */ = {isa = PBXBuildFile; fileRef = 62B29F702E966D6200600D4E /* DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf */; };
+		62C905AE2E9E6C4B00A3AB8D /* deepseek-r1-distill-sports-science-lora-q4_k_m.gguf in Resources */ = {isa = PBXBuildFile; fileRef = 62C905AD2E9E6C4B00A3AB8D /* deepseek-r1-distill-sports-science-lora-q4_k_m.gguf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		8BA8CA9CF701841FB67F4B6B /* libPods-PolarH10Monitor.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F2C63E0FA0734B2A47DB448A /* libPods-PolarH10Monitor.a */; };
@@ -21,7 +21,7 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = PolarH10Monitor/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = PolarH10Monitor/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		5D471E16FC27E9E97AE67CB4 /* Pods-PolarH10Monitor.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PolarH10Monitor.release.xcconfig"; path = "Target Support Files/Pods-PolarH10Monitor/Pods-PolarH10Monitor.release.xcconfig"; sourceTree = "<group>"; };
-		62B29F702E966D6200600D4E /* DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf"; sourceTree = "<group>"; };
+		62C905AD2E9E6C4B00A3AB8D /* deepseek-r1-distill-sports-science-lora-q4_k_m.gguf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "deepseek-r1-distill-sports-science-lora-q4_k_m.gguf"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = PolarH10Monitor/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = PolarH10Monitor/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		9704CE473545FA965ACBAD3D /* Pods-PolarH10Monitor.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-PolarH10Monitor.debug.xcconfig"; path = "Target Support Files/Pods-PolarH10Monitor/Pods-PolarH10Monitor.debug.xcconfig"; sourceTree = "<group>"; };
@@ -72,7 +72,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				62B29F702E966D6200600D4E /* DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf */,
+				62C905AD2E9E6C4B00A3AB8D /* deepseek-r1-distill-sports-science-lora-q4_k_m.gguf */,
 				13B07FAE1A68108700A75B9A /* PolarH10Monitor */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
@@ -161,8 +161,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				62C905AE2E9E6C4B00A3AB8D /* deepseek-r1-distill-sports-science-lora-q4_k_m.gguf in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
-				62B29F712E966D6200600D4E /* DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3EBEBCA4CE72B0EA9C57FE3A /* PrivacyInfo.xcprivacy in Resources */,
 			);

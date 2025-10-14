@@ -1,5 +1,6 @@
-import { LlamaContext, initLlama } from 'llama.rn';  
+import { LlamaContext, initLlama } from 'llama.rn';
 import { logger } from '../utils/logger';
+import { createSportsPrompt, PROMPT_CONFIG } from '../prompts/sportsPrompts';
 
 export interface LlamaGenerationResult {
   success: boolean;
@@ -36,21 +37,25 @@ class LlamaTextGenerationService {
   async initialize(modelPath?: string): Promise<boolean> {
     try {
       logger.info('🦙 Initializing Llama Text Generation Service...');
-      
-      // Use provided path or default bundle path
-      this.modelPath = modelPath || `${require('react-native-fs').MainBundlePath}/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf`;
-      
+
+      // Use provided path or default bundle path (fine-tuned model)
+      this.modelPath =
+        modelPath ||
+        `${
+          require('react-native-fs').MainBundlePath
+        }/deepseek-r1-distill-sports-science-lora-q4_k_m.gguf`;
+
       logger.info(`📁 Model path: ${this.modelPath}`);
       logger.info('🔄 Creating Llama context...');
 
       // Create Llama context with optimized settings for mobile
       this.context = await initLlama({
         model: this.modelPath,
-        n_ctx: 4096,        // Increased context window for longer conversations
-        n_threads: 4,       // CPU threads (optimal for mobile)
-        n_batch: 256,       // Increased batch size for better throughput
-        use_mlock: false,   // Don't lock memory to RAM
-        use_mmap: true,     // Use memory mapping for efficiency
+        n_ctx: 4096, // Increased context window for longer conversations
+        n_threads: 4, // CPU threads (optimal for mobile)
+        n_batch: 256, // Increased batch size for better throughput
+        use_mlock: false, // Don't lock memory to RAM
+        use_mmap: true, // Use memory mapping for efficiency
       });
 
       if (!this.context) {
@@ -60,15 +65,18 @@ class LlamaTextGenerationService {
       this.isInitialized = true;
       logger.info('✅ Llama Text Generation Service initialized successfully');
       return true;
-
     } catch (error) {
       logger.error('❌ Failed to initialize Llama service:', error);
-      
+
       // Enhanced error reporting
       if (error instanceof Error) {
         if (error.message.includes('No such file')) {
-          logger.error('📁 Model file not found - check if GGUF file is in bundle');
-          logger.error('💡 Make sure to add .gguf file to Xcode project bundle');
+          logger.error(
+            '📁 Model file not found - check if GGUF file is in bundle',
+          );
+          logger.error(
+            '💡 Make sure to add .gguf file to Xcode project bundle',
+          );
         } else if (error.message.includes('memory')) {
           logger.error('🧠 Memory error - model might be too large for device');
         }
@@ -83,7 +91,7 @@ class LlamaTextGenerationService {
    */
   async generateSportsAdvice(
     prompt: string,
-    maxTokens: number = 150
+    maxTokens: number = 150,
   ): Promise<LlamaGenerationResult> {
     const startTime = Date.now();
 
@@ -98,38 +106,25 @@ class LlamaTextGenerationService {
     }
 
     try {
-      logger.info(`🏃‍♂️ Generating sports advice for: "${prompt.substring(0, 50)}..."`);
+      logger.info(
+        `🏃‍♂️ Generating sports advice for: "${prompt.substring(0, 50)}..."`,
+      );
 
-      // Create sports science system prompt
-      const sportsPrompt = `<|im_start|>system
-You are an expert sports scientist and HRV (Heart Rate Variability) specialist with deep knowledge of athletic performance, recovery, and training optimization. 
-
-**Your expertise includes:**
-- Heart Rate Variability analysis and interpretation
-- Athletic recovery and adaptation patterns
-- Training load management and periodization
-- Sports physiology and exercise science
-- Evidence-based performance optimization strategies
-
-**Response guidelines:**
-- Provide accurate, evidence-based information
-- Use clear, accessible language while maintaining technical accuracy
-- Include practical applications for athletes
-- Reference HRV metrics and their meanings when relevant
-- Always prioritize athlete safety and well-being
-
-**Safety disclaimer requirement:**
-Always conclude your response with a clear safety disclaimer that this advice is for informational purposes only and users should consult healthcare professionals for specific medical concerns.
-<|im_end|>
-<|im_start|>user
-${prompt}
-<|im_end|>
-<|im_start|>assistant
-`;
+      // Create sports science system prompt using Gemini-optimized version
+      const sportsPrompt = createSportsPrompt(prompt, true);
 
       // Generate response using Llama
       logger.info('🧠 Running Llama inference...');
-      
+      logger.info(`📋 Using prompt version: ${PROMPT_CONFIG.version}`);
+
+      // Log the full prompt for debugging
+      console.log('🔍 PROMPT ENGINEERING DEBUG:');
+      console.log(`📋 Prompt Version: ${PROMPT_CONFIG.version} (Updated: ${PROMPT_CONFIG.lastUpdated})`);
+      console.log('📝 Full Prompt Sent to Model:');
+      console.log('─'.repeat(80));
+      console.log(sportsPrompt);
+      console.log('─'.repeat(80));
+
       const response = await this.context.completion({
         prompt: sportsPrompt,
         n_predict: maxTokens,
@@ -143,7 +138,22 @@ ${prompt}
       const processingTime = Date.now() - startTime;
       const generatedText = response.text.trim();
 
-      logger.info(`✅ Generated ${response.tokens_predicted} tokens in ${processingTime}ms`);
+      // Log the response for debugging
+      console.log('🤖 MODEL RESPONSE DEBUG:');
+      console.log('📤 Raw Model Response:');
+      console.log('─'.repeat(80));
+      console.log(response.text);
+      console.log('─'.repeat(80));
+      console.log('📊 Response Stats:', {
+        tokensGenerated: response.tokens_predicted,
+        processingTimeMs: processingTime,
+        responseLength: generatedText.length,
+        promptLength: sportsPrompt.length
+      });
+
+      logger.info(
+        `✅ Generated ${response.tokens_predicted} tokens in ${processingTime}ms`,
+      );
 
       return {
         success: true,
@@ -151,7 +161,6 @@ ${prompt}
         tokenCount: response.tokens_predicted || 0,
         processingTime,
       };
-
     } catch (error) {
       const processingTime = Date.now() - startTime;
       logger.error('❌ Llama generation failed:', error);
@@ -171,7 +180,7 @@ ${prompt}
    */
   async generateText(
     prompt: string,
-    config: LlamaGenerationConfig
+    config: LlamaGenerationConfig,
   ): Promise<LlamaGenerationResult> {
     const startTime = Date.now();
 
@@ -206,7 +215,6 @@ ${prompt}
         tokenCount: response.tokens_predicted || 0,
         processingTime,
       };
-
     } catch (error) {
       const processingTime = Date.now() - startTime;
       logger.error('❌ Llama text generation failed:', error);
@@ -244,17 +252,27 @@ ${prompt}
     }
   }
 
+
+
   /**
    * Get initialization status
    */
-  getStatus(): { initialized: boolean; modelPath: string | null } {
+  getStatus(): {
+    initialized: boolean;
+    modelPath: string | null;
+    modelType: string;
+    promptVersion: string;
+  } {
     return {
       initialized: this.isInitialized,
       modelPath: this.modelPath,
+      modelType: 'Fine-tuned Sports Science (LoRA)',
+      promptVersion: PROMPT_CONFIG.version,
     };
   }
 }
 
 // Export singleton instance
-export const llamaTextGenerationService = LlamaTextGenerationService.getInstance();
+export const llamaTextGenerationService =
+  LlamaTextGenerationService.getInstance();
 export default LlamaTextGenerationService;

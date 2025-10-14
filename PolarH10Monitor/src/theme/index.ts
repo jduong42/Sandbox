@@ -7,6 +7,7 @@ import {
   settingsScreenStyles,
   trainingScreenStyles,
 } from './styles';
+import { llamaTestScreenStyles } from './llamaTestScreen';
 
 export const theme = {
   colors,
@@ -27,6 +28,7 @@ export {
   bluetoothButtonStyles,
   settingsScreenStyles,
   trainingScreenStyles,
+  llamaTestScreenStyles,
 };
 
 // Export types
