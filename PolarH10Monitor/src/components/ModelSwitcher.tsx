@@ -1,15 +1,11 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { llamaTextGenerationService } from '../services/LlamaTextGenerationService';
 
 const ModelSwitcher: React.FC = () => {
-  const [currentModel, setCurrentModel] = useState<string>('DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf');
+  const [currentModel, setCurrentModel] = useState<string>(
+    'DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf',
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const availableModels = [
@@ -17,29 +13,31 @@ const ModelSwitcher: React.FC = () => {
       name: 'DeepSeek-R1-Distill (Original)',
       filename: 'DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf',
       size: '1.12GB',
-      description: 'Original model with reasoning capabilities'
+      description: 'Original model with reasoning capabilities',
     },
     {
       name: 'DeepSeek-R1-Sports (Fine-tuned)',
       filename: 'DeepSeek-R1-Sports-Q4_K_M.gguf',
       size: '1.12GB',
-      description: 'Fine-tuned for sports science specialization'
-    }
+      description: 'Fine-tuned for sports science specialization',
+    },
   ];
 
   const switchModel = async (modelFilename: string) => {
     if (isLoading) return;
 
     setIsLoading(true);
-    
+
     try {
       // Release current model
       await llamaTextGenerationService.release();
-      
+
       // Initialize with new model
-      const modelPath = `${require('react-native-fs').MainBundlePath}/${modelFilename}`;
+      const modelPath = `${
+        require('react-native-fs').MainBundlePath
+      }/${modelFilename}`;
       const success = await llamaTextGenerationService.initialize(modelPath);
-      
+
       if (success) {
         setCurrentModel(modelFilename);
         Alert.alert('Success', `Switched to ${modelFilename}`);
@@ -57,14 +55,14 @@ const ModelSwitcher: React.FC = () => {
     <View style={styles.container}>
       <Text style={styles.title}>🔄 Model Switcher</Text>
       <Text style={styles.subtitle}>Current: {currentModel}</Text>
-      
+
       {availableModels.map((model, index) => (
         <TouchableOpacity
           key={index}
           style={[
             styles.modelButton,
             currentModel === model.filename && styles.activeModel,
-            isLoading && styles.disabledButton
+            isLoading && styles.disabledButton,
           ]}
           onPress={() => switchModel(model.filename)}
           disabled={isLoading || currentModel === model.filename}
@@ -74,7 +72,7 @@ const ModelSwitcher: React.FC = () => {
           <Text style={styles.modelDescription}>{model.description}</Text>
         </TouchableOpacity>
       ))}
-      
+
       {isLoading && (
         <Text style={styles.loadingText}>🔄 Switching model...</Text>
       )}

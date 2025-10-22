@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import NativeIcon from '../components/common/NativeIcon';
+import { AnimatedTabView } from '../components';
 import { theme } from '../theme';
 import { settingsScreenStyles } from '../theme/styles';
 import { useBLEScanning, useDeviceHistory } from '../hooks';
@@ -16,7 +17,6 @@ import { StoredDevice, deviceHistoryService } from '../services';
 import { logger } from '../utils/logger';
 
 const SettingsScreen: React.FC = () => {
-
   const {
     isScanning,
     isConnected,
@@ -82,8 +82,6 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
-
-
   const handleDeviceConnect = async (deviceId: string, deviceName: string) => {
     try {
       await connectToDevice(deviceId, deviceName);
@@ -95,143 +93,146 @@ const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={settingsScreenStyles.container}>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={theme.colors.background}
-      />
+    <AnimatedTabView>
+      <ScrollView style={settingsScreenStyles.container}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={theme.colors.background}
+        />
 
-      {/* Device History Card */}
-      <DeviceHistoryCard
-        devices={deviceHistory}
-        loading={historyLoading}
-        error={historyError}
-        onDeviceSelect={handleHistoryDeviceSelect}
-        onDeviceRemove={removeDevice}
-        onClearAll={clearAllDevices}
-        onRefresh={refreshDevices}
-      />
+        {/* Device History Card */}
+        <DeviceHistoryCard
+          devices={deviceHistory}
+          loading={historyLoading}
+          error={historyError}
+          onDeviceSelect={handleHistoryDeviceSelect}
+          onDeviceRemove={removeDevice}
+          onClearAll={clearAllDevices}
+          onRefresh={refreshDevices}
+        />
 
-      {/* Connection Status Card */}
-      <View style={settingsScreenStyles.settingCard}>
-        <View style={settingsScreenStyles.settingHeader}>
-          <NativeIcon
-            name={isConnected ? 'bluetooth-connected' : 'bluetooth'}
-            size={24}
-            color={
-              isConnected ? theme.colors.success : theme.colors.textSecondary
-            }
-            style={settingsScreenStyles.settingIcon}
-          />
-          <View style={settingsScreenStyles.settingTextContainer}>
-            <Text style={settingsScreenStyles.settingTitle}>
-              Connection Status
-            </Text>
-            <Text style={settingsScreenStyles.settingDescription}>
-              {isConnected
-                ? `Connected to ${connectedDeviceName || 'Unknown Device'}`
-                : bluetoothEnabled
-                ? 'Ready to connect'
-                : 'Bluetooth disabled'}
-            </Text>
-          </View>
-        </View>
-
-        {isConnected && (
-          <TouchableOpacity
-            style={settingsScreenStyles.disconnectButton}
-            onPress={disconnectDevice}
-          >
-            <Text style={settingsScreenStyles.disconnectButtonText}>
-              Disconnect
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Scan for Devices Card */}
-      <View style={settingsScreenStyles.settingCard}>
-        <View style={settingsScreenStyles.settingHeader}>
-          <NativeIcon
-            name="settings"
-            size={24}
-            color={theme.colors.textSecondary}
-            style={settingsScreenStyles.settingIcon}
-          />
-          <View style={settingsScreenStyles.settingTextContainer}>
-            <Text style={settingsScreenStyles.settingTitle}>
-              Scan for BLE Devices
-            </Text>
-            <Text style={settingsScreenStyles.settingDescription}>
-              Pressing scan to start scanning{'\n'}BLE Devices at your vicinity.
-            </Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[
-            settingsScreenStyles.scanButton,
-            isScanning && settingsScreenStyles.scanButtonDisabled,
-          ]}
-          onPress={startScan}
-          disabled={isScanning}
-        >
-          <Text style={settingsScreenStyles.scanButtonText}>
-            {isScanning ? 'Scanning...' : 'Scan'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-
-
-      {/* Known Devices Card */}
-      {discoveredDevices.length > 0 && (
+        {/* Connection Status Card */}
         <View style={settingsScreenStyles.settingCard}>
           <View style={settingsScreenStyles.settingHeader}>
             <NativeIcon
-              name="devices"
+              name={isConnected ? 'bluetooth-connected' : 'bluetooth'}
+              size={24}
+              color={
+                isConnected ? theme.colors.success : theme.colors.textSecondary
+              }
+              style={settingsScreenStyles.settingIcon}
+            />
+            <View style={settingsScreenStyles.settingTextContainer}>
+              <Text style={settingsScreenStyles.settingTitle}>
+                Connection Status
+              </Text>
+              <Text style={settingsScreenStyles.settingDescription}>
+                {isConnected
+                  ? `Connected to ${connectedDeviceName || 'Unknown Device'}`
+                  : bluetoothEnabled
+                  ? 'Ready to connect'
+                  : 'Bluetooth disabled'}
+              </Text>
+            </View>
+          </View>
+
+          {isConnected && (
+            <TouchableOpacity
+              style={settingsScreenStyles.disconnectButton}
+              onPress={disconnectDevice}
+            >
+              <Text style={settingsScreenStyles.disconnectButtonText}>
+                Disconnect
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Scan for Devices Card */}
+        <View style={settingsScreenStyles.settingCard}>
+          <View style={settingsScreenStyles.settingHeader}>
+            <NativeIcon
+              name="settings"
               size={24}
               color={theme.colors.textSecondary}
               style={settingsScreenStyles.settingIcon}
             />
             <View style={settingsScreenStyles.settingTextContainer}>
               <Text style={settingsScreenStyles.settingTitle}>
-                Discovered Devices ({discoveredDevices.length})
+                Scan for BLE Devices
               </Text>
               <Text style={settingsScreenStyles.settingDescription}>
-                Tap on a device to connect
+                Pressing scan to start scanning{'\n'}BLE Devices at your
+                vicinity.
               </Text>
             </View>
           </View>
 
-          <View style={settingsScreenStyles.devicesList}>
-            {discoveredDevices.map((device, index) => (
-              <TouchableOpacity
-                key={device.id}
-                style={[
-                  settingsScreenStyles.deviceItem,
-                  index === discoveredDevices.length - 1 &&
-                    settingsScreenStyles.deviceItemLast,
-                ]}
-                onPress={() => handleDeviceConnect(device.id, device.name)}
-              >
-                <View style={settingsScreenStyles.deviceInfo}>
-                  <Text style={settingsScreenStyles.deviceName}>
-                    {device.name}
-                  </Text>
-                  <Text style={settingsScreenStyles.deviceId}>{device.id}</Text>
-                </View>
-                <NativeIcon
-                  name="chevron-right"
-                  size={20}
-                  color={theme.colors.textSecondary}
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TouchableOpacity
+            style={[
+              settingsScreenStyles.scanButton,
+              isScanning && settingsScreenStyles.scanButtonDisabled,
+            ]}
+            onPress={startScan}
+            disabled={isScanning}
+          >
+            <Text style={settingsScreenStyles.scanButtonText}>
+              {isScanning ? 'Scanning...' : 'Scan'}
+            </Text>
+          </TouchableOpacity>
         </View>
-      )}
-    </ScrollView>
+
+        {/* Known Devices Card */}
+        {discoveredDevices.length > 0 && (
+          <View style={settingsScreenStyles.settingCard}>
+            <View style={settingsScreenStyles.settingHeader}>
+              <NativeIcon
+                name="devices"
+                size={24}
+                color={theme.colors.textSecondary}
+                style={settingsScreenStyles.settingIcon}
+              />
+              <View style={settingsScreenStyles.settingTextContainer}>
+                <Text style={settingsScreenStyles.settingTitle}>
+                  Discovered Devices ({discoveredDevices.length})
+                </Text>
+                <Text style={settingsScreenStyles.settingDescription}>
+                  Tap on a device to connect
+                </Text>
+              </View>
+            </View>
+
+            <View style={settingsScreenStyles.devicesList}>
+              {discoveredDevices.map((device, index) => (
+                <TouchableOpacity
+                  key={device.id}
+                  style={[
+                    settingsScreenStyles.deviceItem,
+                    index === discoveredDevices.length - 1 &&
+                      settingsScreenStyles.deviceItemLast,
+                  ]}
+                  onPress={() => handleDeviceConnect(device.id, device.name)}
+                >
+                  <View style={settingsScreenStyles.deviceInfo}>
+                    <Text style={settingsScreenStyles.deviceName}>
+                      {device.name}
+                    </Text>
+                    <Text style={settingsScreenStyles.deviceId}>
+                      {device.id}
+                    </Text>
+                  </View>
+                  <NativeIcon
+                    name="chevron-right"
+                    size={20}
+                    color={theme.colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+      </ScrollView>
+    </AnimatedTabView>
   );
 };
 

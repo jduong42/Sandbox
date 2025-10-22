@@ -8,8 +8,7 @@ const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
  */
 const config = {
   resolver: {
-    assetExts: ['bin', 'txt', 'jpg', 'png', 'json', 'onnx'], // Added onnx back for fine-tuned model
-    // Removed blockList since we're using ONNX runtime again
+    assetExts: ['bin', 'txt', 'jpg', 'png', 'json'], // Removed onnx
   },
 };
 

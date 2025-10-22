@@ -38,6 +38,7 @@ python fine_tune_trainer.py
 ```
 
 This will:
+
 - ✅ Load DeepSeek-R1-Distill base model
 - ✅ Apply LoRA (Low-Rank Adaptation) for efficient training
 - ✅ Train on your 424 sports science examples
@@ -67,23 +68,25 @@ Use the ModelSwitcher component or manually update the model path in LlamaTextGe
 
 ### Performance Comparison
 
-| Metric | Original Model | Fine-tuned Model |
-|--------|---------------|------------------|
-| **Speed** | ~26 tokens/sec | ~26 tokens/sec |
-| **Size** | 1.12GB | 1.12GB |
-| **Accuracy** | Good | **Better** |
-| **Sports Terms** | Generic | **Specialized** |
-| **HRV Knowledge** | Basic | **Expert-level** |
+| Metric            | Original Model | Fine-tuned Model |
+| ----------------- | -------------- | ---------------- |
+| **Speed**         | ~26 tokens/sec | ~26 tokens/sec   |
+| **Size**          | 1.12GB         | 1.12GB           |
+| **Accuracy**      | Good           | **Better**       |
+| **Sports Terms**  | Generic        | **Specialized**  |
+| **HRV Knowledge** | Basic          | **Expert-level** |
 
 ### Quality Improvements
 
 **Before Fine-tuning:**
+
 ```
 Q: What is HRV?
 A: HRV stands for Heart Rate Variability. It measures the variation in time between heartbeats...
 ```
 
 **After Fine-tuning:**
+
 ```
 Q: What is HRV?
 A: Heart Rate Variability (HRV) is a critical biomarker measuring the temporal variation between consecutive R-R intervals in ECG recordings. For athletes, HRV serves as a key indicator of autonomic nervous system balance, reflecting the interplay between sympathetic and parasympathetic activity...
@@ -103,7 +106,7 @@ Update the model path in `LlamaTextGenerationService`:
 // Original model
 const modelPath = `${MainBundlePath}/DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf`;
 
-// Fine-tuned model  
+// Fine-tuned model
 const modelPath = `${MainBundlePath}/DeepSeek-R1-Sports-Q4_K_M.gguf`;
 ```
 
@@ -112,11 +115,13 @@ const modelPath = `${MainBundlePath}/DeepSeek-R1-Sports-Q4_K_M.gguf`;
 Try these specialized prompts to see the improvement:
 
 1. **HRV Analysis:**
+
    ```
    "Explain how to interpret HRV trends for overtraining detection in endurance athletes"
    ```
 
 2. **Training Periodization:**
+
    ```
    "Design a 16-week polarized training plan for a marathon runner with HRV monitoring integration"
    ```
@@ -131,7 +136,7 @@ Try these specialized prompts to see the improvement:
 ✅ **Fully Compatible** - Works with existing llama.rn setup  
 ✅ **Same API** - No code changes needed in your app  
 ✅ **Reversible** - Can switch back to original model anytime  
-✅ **Safe Training** - Uses LoRA to preserve base model integrity  
+✅ **Safe Training** - Uses LoRA to preserve base model integrity
 
 ## 📈 Advanced Options
 
@@ -151,14 +156,16 @@ Add more training examples to `fine_tune_dataset.json`:
 ### Training Configuration
 
 Modify `fine_tune_config.json` to adjust:
+
 - Learning rate
-- Number of epochs  
+- Number of epochs
 - LoRA rank (model capacity)
 - Batch size
 
 ### Multi-Model Setup
 
 Keep both models in your iOS bundle:
+
 - `DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf` (1.12GB) - Original
 - `DeepSeek-R1-Sports-Q4_K_M.gguf` (1.12GB) - Fine-tuned
 

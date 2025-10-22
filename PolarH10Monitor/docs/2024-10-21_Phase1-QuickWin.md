@@ -16,6 +16,7 @@ npx react-native info
 ## 🔄 STEP 2: Convert Qwen2.5-1.5B to GGUF (2-3 hours)
 
 ### Option 2A: Use HuggingFace Hub (Easiest)
+
 ```bash
 # Check if GGUF version already exists
 # Search: "Qwen/Qwen2.5-1.5B-Instruct GGUF" on HuggingFace
@@ -23,6 +24,7 @@ npx react-native info
 ```
 
 ### Option 2B: Convert Yourself (If needed)
+
 ```bash
 # Install llama.cpp conversion tools
 git clone https://github.com/ggerganov/llama.cpp
@@ -41,28 +43,28 @@ import { LlamaContext } from 'llama.rn';
 
 class LlamaTextGenerationService {
   private context: LlamaContext | null = null;
-  
+
   async initialize(modelPath: string): Promise<boolean> {
     this.context = await LlamaContext.create({
       model: modelPath,
-      n_ctx: 2048,        // Context length
-      n_threads: 4,       // CPU threads
-      temp: 0.7,          // Temperature
+      n_ctx: 2048, // Context length
+      n_threads: 4, // CPU threads
+      temp: 0.7, // Temperature
     });
     return this.context !== null;
   }
-  
+
   async generateSportsAdvice(prompt: string): Promise<string> {
     if (!this.context) throw new Error('Not initialized');
-    
+
     const sportsPrompt = `You are a sports science expert...${prompt}`;
-    
+
     const response = await this.context.completion({
       prompt: sportsPrompt,
-      n_predict: 150,     // Max tokens
-      stop: ['</s>'],     // Stop tokens
+      n_predict: 150, // Max tokens
+      stop: ['</s>'], // Stop tokens
     });
-    
+
     return response.text;
   }
 }
@@ -71,6 +73,7 @@ class LlamaTextGenerationService {
 ## 📱 STEP 4: Test on iOS (1-2 hours)
 
 Integration testing with your existing UI:
+
 - Replace ONNX service calls with Llama service
 - Test with your 5 sports science prompts
 - Verify memory usage and performance

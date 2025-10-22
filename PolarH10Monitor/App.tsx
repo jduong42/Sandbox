@@ -1,22 +1,14 @@
 /**
- * PolarH10Monitor App
+ * PolarH10Monitor App - Dark Fitness Theme with Splash Screen
  *
  * @format
  */
 
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { MainTabNavigator } from './src/navigation';
+import AppContainer from './src/components/AppContainer';
 
 function App() {
-  return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <MainTabNavigator />
-      </NavigationContainer>
-    </SafeAreaProvider>
-  );
+  return <AppContainer />;
 }
 
 export default App;

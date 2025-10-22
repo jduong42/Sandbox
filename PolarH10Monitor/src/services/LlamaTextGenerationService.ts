@@ -119,7 +119,9 @@ class LlamaTextGenerationService {
 
       // Log the full prompt for debugging
       console.log('🔍 PROMPT ENGINEERING DEBUG:');
-      console.log(`📋 Prompt Version: ${PROMPT_CONFIG.version} (Updated: ${PROMPT_CONFIG.lastUpdated})`);
+      console.log(
+        `📋 Prompt Version: ${PROMPT_CONFIG.version} (Updated: ${PROMPT_CONFIG.lastUpdated})`,
+      );
       console.log('📝 Full Prompt Sent to Model:');
       console.log('─'.repeat(80));
       console.log(sportsPrompt);
@@ -148,7 +150,7 @@ class LlamaTextGenerationService {
         tokensGenerated: response.tokens_predicted,
         processingTimeMs: processingTime,
         responseLength: generatedText.length,
-        promptLength: sportsPrompt.length
+        promptLength: sportsPrompt.length,
       });
 
       logger.info(
@@ -251,8 +253,6 @@ class LlamaTextGenerationService {
       logger.warn('⚠️ Error disposing Llama context:', error);
     }
   }
-
-
 
   /**
    * Get initialization status
