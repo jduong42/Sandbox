@@ -6,6 +6,7 @@ import { theme } from '../theme';
 import {
   HomeScreen,
   DataScreen,
+  AnalyticsScreen,
   LlamaTestScreen,
   SettingsScreen,
   TrainingDataScreen,
@@ -120,7 +121,7 @@ export default function MainTabNavigator() {
       />
       <Tab.Screen
         name="Data"
-        component={DataScreen}
+        component={AnalyticsScreen}
         options={{
           title: 'Analytics',
         }}

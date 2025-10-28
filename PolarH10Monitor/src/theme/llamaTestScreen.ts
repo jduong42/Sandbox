@@ -1,106 +1,147 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform, Dimensions } from 'react-native';
+import { theme } from './index';
+
+const { width } = Dimensions.get('window');
 
 export const llamaTestScreenStyles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#f5f5f5',
   },
-  innerContainer: {
+  gradient: {
     flex: 1,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  promptContainer: {
-    marginBottom: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
-  },
-  promptLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
-  },
-  promptInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 80,
-    maxHeight: 120,
-    backgroundColor: '#f9f9f9',
-  },
-  buttonContainer: {
-    marginBottom: 20,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  statusButton: {
-    backgroundColor: '#34C759',
-  },
-  customButton: {
-    backgroundColor: '#FF9500',
-  },
-  presetContainer: {
-    marginTop: 15,
-    paddingTop: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  presetLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#666',
-  },
-  presetButtons: {
+  headerContent: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  presetButton: {
-    backgroundColor: '#6C7CE7',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
-    marginBottom: 4,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
   },
-  presetButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '500',
+  headerTitle: {
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text,
   },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+  headerSubtitle: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.textSecondary,
   },
-  resultContainer: {
+  clearButton: {
+    padding: theme.spacing.sm,
+    borderRadius: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+  },
+  messagesContainer: {
     flex: 1,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
   },
-  resultText: {
-    fontSize: 14,
-    fontFamily: 'Courier New',
-    color: '#333',
+  messagesContent: {
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+  },
+  messageContainer: {
+    marginBottom: theme.spacing.md,
+  },
+  userMessageContainer: {
+    alignItems: 'flex-end',
+  },
+  aiMessageContainer: {
+    alignItems: 'flex-start',
+  },
+  messageBubble: {
+    maxWidth: width * 0.8,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.spacing.lg,
+  },
+  userBubble: {
+    backgroundColor: theme.colors.primary,
+    borderBottomRightRadius: theme.spacing.sm,
+  },
+  aiBubble: {
+    backgroundColor: theme.colors.surface,
+    borderBottomLeftRadius: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  messageText: {
+    fontSize: theme.typography.sizes.md,
     lineHeight: 20,
+    marginBottom: theme.spacing.xs,
+  },
+  userMessageText: {
+    color: 'white',
+  },
+  aiMessageText: {
+    color: theme.colors.text,
+  },
+  timestamp: {
+    fontSize: theme.typography.sizes.xs,
+    opacity: 0.7,
+  },
+  userTimestamp: {
+    color: 'white',
+    textAlign: 'right',
+  },
+  aiTimestamp: {
+    color: theme.colors.textSecondary,
+  },
+  typingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: theme.spacing.xs,
+  },
+  typingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.textSecondary,
+    opacity: 0.6,
+  },
+  inputContainer: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? theme.spacing.xl : theme.spacing.md,
+  },
+  inputSurface: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.spacing.xl,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text,
+    maxHeight: 100,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  sendButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.spacing.lg,
+    padding: theme.spacing.sm,
+    marginLeft: theme.spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 40,
+    minHeight: 40,
+  },
+  sendButtonDisabled: {
+    backgroundColor: theme.colors.backgroundSecondary,
   },
 });
