@@ -83,10 +83,7 @@ const SMLScreen: React.FC = () => {
       addMessage('ai', response.response, response);
     } catch (error) {
       console.error('Error asking question:', error);
-      Alert.alert(
-        'Error',
-        'Failed to get response from AI. Please try again.',
-      );
+      addMessage('ai', 'Sorry, I could not process your question at the moment.');
     }
   };
 
@@ -94,14 +91,11 @@ const SMLScreen: React.FC = () => {
     if (!currentHeartRate || isLoading || !isInitialized) return;
 
     try {
-      const response = await getHeartRateAdvice();
+      const response = await getHeartRateAdvice(currentHeartRate);
       addMessage('ai', response.response, response);
     } catch (error) {
       console.error('Error getting heart rate advice:', error);
-      Alert.alert(
-        'Error',
-        'Failed to get heart rate advice. Please try again.',
-      );
+      addMessage('ai', 'Sorry, I could not analyze your heart rate at the moment.');
     }
   };
 
@@ -151,7 +145,7 @@ const SMLScreen: React.FC = () => {
 
       <SMLHeader
         isInitialized={isInitialized}
-        currentHeartRate={currentHeartRate}
+        currentHeartRate={currentHeartRate ?? undefined}
         onHeartRateAdvice={handleHeartRateAdvice}
       />
 

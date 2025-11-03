@@ -7,6 +7,10 @@ export { sessionRecordingService } from './SessionRecordingService';
 // Llama.rn AI Services
 export { llamaTextGenerationService } from './LlamaTextGenerationService';
 
+// Sports AI Services (Mock implementation)
+export { sportsAIService } from './SportsAIService';
+export type { SportsAIResponse, SportsContext } from './SportsAIService';
+
 // Export types and interfaces
 export type {
   HeartRateReading,

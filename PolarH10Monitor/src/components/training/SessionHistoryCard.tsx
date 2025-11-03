@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import NativeIcon from '../common/NativeIcon';
+import { SafeText } from '../common/SafeText';
 import { trainingDataStyles } from '../../theme/trainingDataStyles';
 import { colors } from '../../theme/colors';
 
@@ -29,15 +30,15 @@ export const SessionHistoryCard: React.FC<SessionHistoryCardProps> = ({
           color={colors.primary}
           style={trainingDataStyles.recordingIcon}
         />
-        <Text style={trainingDataStyles.historyTitle}>
+        <SafeText style={trainingDataStyles.historyTitle}>
           Recent Sessions ({sessionHistory.length})
-        </Text>
+        </SafeText>
       </View>
 
       {sessionHistory.length === 0 ? (
-        <Text style={trainingDataStyles.historyEmpty}>
+        <SafeText style={trainingDataStyles.historyEmpty} numberOfLines={2}>
           No recording sessions yet. Start your first session above!
-        </Text>
+        </SafeText>
       ) : (
         sessionHistory.slice(0, 5).map((session, index) => (
           <View
@@ -49,22 +50,33 @@ export const SessionHistoryCard: React.FC<SessionHistoryCardProps> = ({
             ]}
           >
             <View style={trainingDataStyles.historyItemLeft}>
-              <Text style={trainingDataStyles.historyItemName}>
+              <SafeText
+                style={trainingDataStyles.historyItemName}
+                numberOfLines={1}
+              >
                 {session.name}
-              </Text>
-              <Text style={trainingDataStyles.historyItemDate}>
-                {session.startTime.toLocaleDateString()} at{' '}
-                {session.startTime.toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </Text>
+              </SafeText>
+              <SafeText
+                style={trainingDataStyles.historyItemDate}
+                numberOfLines={1}
+              >
+                {`${session.startTime.toLocaleDateString()} at ${session.startTime.toLocaleTimeString(
+                  [],
+                  {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  },
+                )}`}
+              </SafeText>
             </View>
-            <Text style={trainingDataStyles.historyItemDuration}>
+            <SafeText
+              style={trainingDataStyles.historyItemDuration}
+              numberOfLines={1}
+            >
               {session.duration
                 ? formatDuration(session.duration)
                 : 'In progress'}
-            </Text>
+            </SafeText>
           </View>
         ))
       )}

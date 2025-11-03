@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, Dimensions } from 'react-native';
+import { SafeText } from '../common/SafeText';
 import { theme } from '../../theme';
 import { ChartData } from '../../types/training';
 import { chartComponentStyles as styles } from '../../theme/chartComponents';
 import {
-  ZoneBar,
+  DonutChart,
   ZoneDetailModal,
   HEART_RATE_ZONES,
   ZONE_DETAILS,
@@ -26,8 +27,16 @@ export const HeartRateZonesChart: React.FC<HeartRateZonesChartProps> = ({
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedZone, setSelectedZone] = useState<number | null>(null);
 
-  const maxValue = Math.max(...data.data.map(point => point.y));
-  const maxBarWidth = chartWidth - 200; // 110px labels + 90px for minutes
+  // Calculate total time for percentage calculations
+  const totalTime = data.data.reduce((sum, point) => sum + point.y, 0);
+
+  // Prepare data for donut chart
+  const donutData = data.data.map((point, index) => ({
+    value: point.y,
+    color: HEART_RATE_ZONES[index]?.color || '#888888',
+    label: HEART_RATE_ZONES[index]?.name || `Zone ${index + 1}`,
+    zoneIndex: index,
+  }));
 
   const getZoneInfo = (index: number): ZoneInfo => {
     return HEART_RATE_ZONES[index] || HEART_RATE_ZONES[0];
@@ -45,18 +54,13 @@ export const HeartRateZonesChart: React.FC<HeartRateZonesChartProps> = ({
 
   return (
     <View style={[styles.chartContainer, style]}>
-      <Text style={styles.chartTitle}>Time in Heart Rate Zones</Text>
-      
-      {data.data.map((point, index) => (
-        <ZoneBar
-          key={index}
-          zoneInfo={getZoneInfo(index)}
-          value={point.y}
-          maxValue={maxValue}
-          maxBarWidth={maxBarWidth}
-          onPress={() => handleZonePress(index)}
-        />
-      ))}
+      <SafeText style={styles.chartTitle}>Time in Heart Rate Zones</SafeText>
+
+      <DonutChart
+        data={donutData}
+        totalTime={totalTime}
+        onZonePress={handleZonePress}
+      />
 
       {selectedZone !== null && (
         <ZoneDetailModal

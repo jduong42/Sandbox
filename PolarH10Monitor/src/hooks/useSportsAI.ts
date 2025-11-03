@@ -8,12 +8,12 @@ export interface UseSportsAIReturn {
   askQuestion: (
     question: string,
     context?: SportsContext,
-  ) => Promise<SportsAIResponse | null>;
+  ) => Promise<SportsAIResponse>;
   getHeartRateAdvice: (
     heartRate: number,
     restingHR?: number,
     maxHR?: number,
-  ) => Promise<SportsAIResponse | null>;
+  ) => Promise<SportsAIResponse>;
   getCommonQuestions: () => string[];
   error: string | null;
   clearError: () => void;
@@ -63,10 +63,10 @@ export const useSportsAI = (): UseSportsAIReturn => {
     async (
       question: string,
       context?: SportsContext,
-    ): Promise<SportsAIResponse | null> => {
+    ): Promise<SportsAIResponse> => {
       if (!isInitialized) {
         setError('AI service not initialized');
-        return null;
+        throw new Error('AI service not initialized');
       }
 
       try {
@@ -83,7 +83,7 @@ export const useSportsAI = (): UseSportsAIReturn => {
           err instanceof Error ? err.message : 'Failed to get AI response';
         logger.error('Failed to ask question', { error: err, question });
         setError(errorMessage);
-        return null;
+        throw err;
       } finally {
         setIsLoading(false);
       }
@@ -96,10 +96,10 @@ export const useSportsAI = (): UseSportsAIReturn => {
       heartRate: number,
       restingHR?: number,
       maxHR?: number,
-    ): Promise<SportsAIResponse | null> => {
+    ): Promise<SportsAIResponse> => {
       if (!isInitialized) {
         setError('AI service not initialized');
-        return null;
+        throw new Error('AI service not initialized');
       }
 
       try {
@@ -122,7 +122,7 @@ export const useSportsAI = (): UseSportsAIReturn => {
           heartRate,
         });
         setError(errorMessage);
-        return null;
+        throw err;
       } finally {
         setIsLoading(false);
       }

@@ -211,6 +211,9 @@ export const trainingDataStyles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
     padding: spacing.lg,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+    lineHeight: 20,
   },
 
   // History Items
@@ -234,15 +237,21 @@ export const trainingDataStyles = StyleSheet.create({
     color: colors.text,
     fontWeight: '500',
     marginBottom: 2,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   historyItemDate: {
     ...typography.caption,
     color: colors.textSecondary,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   historyItemDuration: {
     ...typography.body,
     color: colors.primary,
     fontWeight: '500',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 
   // Helper styles

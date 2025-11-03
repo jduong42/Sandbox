@@ -6,8 +6,8 @@ export const chartComponentStyles = StyleSheet.create({
   chartContainer: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginHorizontal: theme.spacing.xl,
+    padding: theme.spacing.md,
+    marginHorizontal: theme.spacing.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
@@ -17,59 +17,6 @@ export const chartComponentStyles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.lg,
     textAlign: 'center',
-  },
-  zoneContainer: {
-    marginBottom: theme.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  zoneLabel: {
-    width: 110,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  zoneColorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: theme.spacing.sm,
-  },
-  zoneName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: theme.colors.text,
-    flex: 1,
-  },
-  barContainer: {
-    flex: 1,
-    height: 35,
-    backgroundColor: theme.colors.backgroundSecondary,
-    borderRadius: theme.borderRadius.sm,
-    marginRight: theme.spacing.md,
-    position: 'relative',
-    justifyContent: 'center',
-  },
-  zoneBar: {
-    height: '100%',
-    borderRadius: theme.borderRadius.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 2,
-  },
-  barText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'white',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  zoneValue: {
-    width: 70,
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.text,
-    textAlign: 'right',
   },
 
   // Zone Detail Modal styles
@@ -152,6 +99,102 @@ export const chartComponentStyles = StyleSheet.create({
     color: theme.colors.textOnPrimary,
     fontSize: 16,
     fontWeight: '600',
+  },
+
+  // Improved Zone Bar styles
+  improvedZoneContainer: {
+    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  improvedZoneLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  improvedZoneName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginLeft: theme.spacing.sm,
+    includeFontPadding: false,
+  },
+  improvedBarSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  improvedBarTrack: {
+    flex: 1,
+    height: 20,
+    backgroundColor: theme.colors.backgroundSecondary,
+    borderRadius: theme.borderRadius.sm,
+    marginRight: theme.spacing.md,
+    overflow: 'hidden',
+  },
+  improvedBar: {
+    height: '100%',
+    borderRadius: theme.borderRadius.sm,
+    minWidth: 4,
+  },
+  improvedValueContainer: {
+    alignItems: 'flex-end',
+    minWidth: 80,
+  },
+  improvedTimeValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.text,
+    includeFontPadding: false,
+    marginBottom: 2,
+  },
+  improvedPercentValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.colors.textSecondary,
+    includeFontPadding: false,
+  },
+
+  // Donut Chart styles
+  donutContainer: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+  },
+  donutChartContainer: {
+    marginBottom: theme.spacing.md,
+  },
+  donutLegend: {
+    width: '100%',
+  },
+  donutLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  donutLegendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: theme.spacing.sm,
+  },
+  donutLegendLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.colors.text,
+    flex: 1,
+    includeFontPadding: false,
+  },
+  donutLegendValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    includeFontPadding: false,
   },
 
   // Chart component common styles
