@@ -137,7 +137,7 @@ export function FigmaAIChatScreen() {
                   },
                 ]}
               />
-              <Text style={styles.statusText}>
+              <Text style={[styles.statusText, { color: c.muted }]}>
                 {isModelReady ? 'Ready' : initError ? 'Error' : 'Loading...'}
               </Text>
             </View>
@@ -163,9 +163,16 @@ export function FigmaAIChatScreen() {
             ))}
             {isGenerating && (
               <View style={styles.typingRow}>
-                <View style={styles.typingBubble}>
+                <View
+                  style={[
+                    styles.typingBubble,
+                    { backgroundColor: c.surface, borderColor: c.border },
+                  ]}
+                >
                   <ActivityIndicator size="small" color={t.colors.muted} />
-                  <Text style={styles.typingText}>AI is thinking...</Text>
+                  <Text style={[styles.typingText, { color: c.muted }]}>
+                    AI is thinking...
+                  </Text>
                 </View>
               </View>
             )}
@@ -186,7 +193,7 @@ export function FigmaAIChatScreen() {
                 value={inputValue}
                 onChangeText={setInputValue}
                 placeholder="Ask me anything about your fitness..."
-                placeholderTextColor={t.colors.muted}
+                placeholderTextColor={c.muted}
                 multiline
                 editable={isModelReady && !isGenerating}
                 returnKeyType="send"

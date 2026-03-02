@@ -10,6 +10,9 @@ export const DARK_COLORS = {
   foreground: t.colors.foreground,
   muted: t.colors.muted,
   amberTint: t.colors.amberTint,
+  connectedBg: 'rgba(34,197,94,0.1)',
+  connectedBorder: 'rgba(34,197,94,0.3)',
+  connectedText: '#86efac',
   statusBar: 'light-content' as const,
 };
 
@@ -22,6 +25,9 @@ export const LIGHT_COLORS = {
   foreground: '#0f172a',
   muted: '#64748b',
   amberTint: 'rgba(245,158,11,0.15)',
+  connectedBg: '#f0fdf4',
+  connectedBorder: '#16a34a',
+  connectedText: '#15803d',
   statusBar: 'dark-content' as const,
 };
 
@@ -34,6 +40,9 @@ export type ThemeColors = {
   foreground: string;
   muted: string;
   amberTint: string;
+  connectedBg: string;
+  connectedBorder: string;
+  connectedText: string;
   statusBar: 'light-content' | 'dark-content';
 };
 

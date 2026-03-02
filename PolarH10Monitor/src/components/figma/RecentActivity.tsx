@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '../../theme/ThemeContext';
 
 interface RecentActivityProps {
   name: string;
@@ -18,20 +19,31 @@ export function RecentActivity({
   icon,
   color,
 }: RecentActivityProps) {
+  const { c } = useTheme();
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[
+        styles.card,
+        { backgroundColor: c.surface, borderColor: c.border },
+      ]}
+      activeOpacity={0.7}
+    >
       <View style={[styles.iconContainer, { backgroundColor: color }]}>
         <Text style={styles.icon}>{icon}</Text>
       </View>
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text style={[styles.name, { color: c.foreground }]} numberOfLines={1}>
           {name}
         </Text>
-        <Text style={styles.time}>{time}</Text>
+        <Text style={[styles.time, { color: c.muted }]}>{time}</Text>
       </View>
       <View style={styles.stats}>
-        <Text style={styles.duration}>{duration}</Text>
-        <Text style={styles.calories}>{calories} cal</Text>
+        <Text style={[styles.duration, { color: c.foreground }]}>
+          {duration}
+        </Text>
+        <Text style={[styles.calories, { color: c.muted }]}>
+          {calories} cal
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -39,11 +51,9 @@ export function RecentActivity({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.5)',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
@@ -65,12 +75,10 @@ const styles = StyleSheet.create({
   },
   name: {
     fontWeight: '600',
-    color: '#ffffff',
     fontSize: 15,
   },
   time: {
     fontSize: 14,
-    color: '#cbd5e1',
     marginTop: 2,
   },
   stats: {
@@ -78,12 +86,10 @@ const styles = StyleSheet.create({
   },
   duration: {
     fontWeight: '600',
-    color: '#ffffff',
     fontSize: 14,
   },
   calories: {
     fontSize: 14,
-    color: '#cbd5e1',
     marginTop: 2,
   },
 });

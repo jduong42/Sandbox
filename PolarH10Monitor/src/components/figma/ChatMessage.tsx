@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { figmaTheme as t } from '../../theme/figmaTheme';
+import { useTheme } from '../../theme/ThemeContext';
 
 export interface Message {
   id: number;
@@ -15,6 +16,7 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const { c } = useTheme();
 
   return (
     <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
@@ -43,8 +45,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </Text>
           </View>
         ) : (
-          <View style={styles.assistantBubble}>
-            <Text style={styles.assistantText}>
+          <View
+            style={[
+              styles.assistantBubble,
+              { backgroundColor: c.surface, borderColor: c.border },
+            ]}
+          >
+            <Text style={[styles.assistantText, { color: c.foreground }]}>
               {message.content}
               {message.isStreaming && <Text style={styles.cursor}> ▌</Text>}
             </Text>

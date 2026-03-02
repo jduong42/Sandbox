@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../../theme/ThemeContext';
 
 interface StatCardProps {
   icon: string;
@@ -18,16 +19,22 @@ export function StatCard({
   unit,
   color,
 }: StatCardProps) {
+  const { c } = useTheme();
   return (
-    <View style={styles.card}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: c.surface, borderColor: c.border },
+      ]}
+    >
       <View style={styles.header}>
         <Text style={styles.icon}>{icon}</Text>
-        {goal && <Text style={styles.goal}>/{goal}</Text>}
+        {goal && <Text style={[styles.goal, { color: c.muted }]}>/{goal}</Text>}
       </View>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: c.muted }]}>{label}</Text>
       <View style={styles.valueRow}>
-        <Text style={styles.value}>{value}</Text>
-        {unit && <Text style={styles.unit}> {unit}</Text>}
+        <Text style={[styles.value, { color: c.foreground }]}>{value}</Text>
+        {unit && <Text style={[styles.unit, { color: c.muted }]}> {unit}</Text>}
       </View>
     </View>
   );
@@ -35,11 +42,9 @@ export function StatCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.5)',
     flex: 1,
   },
   header: {
@@ -53,11 +58,9 @@ const styles = StyleSheet.create({
   },
   goal: {
     fontSize: 12,
-    color: '#cbd5e1',
   },
   label: {
     fontSize: 12,
-    color: '#cbd5e1',
     marginBottom: 4,
   },
   valueRow: {
@@ -67,11 +70,9 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#ffffff',
   },
   unit: {
     fontSize: 14,
-    color: '#cbd5e1',
     marginBottom: 3,
   },
 });

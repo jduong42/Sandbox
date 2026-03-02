@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import NativeIcon from '../common/NativeIcon';
+import { useTheme } from '../../theme/ThemeContext';
 
 interface BLEStatusProps {
   isConnected: boolean;
@@ -15,11 +16,14 @@ export function BLEStatus({
   batteryLevel,
   onConnect,
 }: BLEStatusProps) {
+  const { c } = useTheme();
   return (
     <View
       style={[
         styles.container,
-        isConnected ? styles.connected : styles.disconnected,
+        isConnected
+          ? { backgroundColor: c.connectedBg, borderColor: c.connectedBorder }
+          : { backgroundColor: c.surface, borderColor: c.border },
       ]}
     >
       <View style={styles.row}>
@@ -27,13 +31,15 @@ export function BLEStatus({
           <View
             style={[
               styles.iconBox,
-              isConnected ? styles.iconConnected : styles.iconDisconnected,
+              isConnected
+                ? styles.iconConnected
+                : { backgroundColor: c.accent },
             ]}
           >
             <NativeIcon name="bluetooth" size={24} color="#ffffff" />
           </View>
           <View>
-            <Text style={styles.deviceName}>
+            <Text style={[styles.deviceName, { color: c.foreground }]}>
               {isConnected ? deviceName : 'No Device'}
             </Text>
             <View style={styles.statusRow}>
@@ -46,9 +52,7 @@ export function BLEStatus({
               <Text
                 style={[
                   styles.statusText,
-                  isConnected
-                    ? styles.statusConnected
-                    : styles.statusDisconnected,
+                  { color: isConnected ? c.connectedText : c.muted },
                 ]}
               >
                 {isConnected ? 'Connected' : 'Disconnected'}
@@ -60,7 +64,9 @@ export function BLEStatus({
         {isConnected ? (
           <View style={styles.batteryRow}>
             <Text style={styles.batteryIcon}>🔋</Text>
-            <Text style={styles.batteryText}>{batteryLevel}%</Text>
+            <Text style={[styles.batteryText, { color: c.foreground }]}>
+              {batteryLevel}%
+            </Text>
           </View>
         ) : (
           <TouchableOpacity

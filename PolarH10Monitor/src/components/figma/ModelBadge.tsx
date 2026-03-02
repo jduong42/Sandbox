@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { figmaTheme as t } from '../../theme/figmaTheme';
+import { useTheme } from '../../theme/ThemeContext';
 
 interface ModelBadgeProps {
   modelName: string;
@@ -8,18 +9,27 @@ interface ModelBadgeProps {
 }
 
 export function ModelBadge({ modelName, onInfoClick }: ModelBadgeProps) {
+  const { c } = useTheme();
   return (
     <View style={styles.row}>
-      <View style={styles.badge}>
+      <View
+        style={[
+          styles.badge,
+          { backgroundColor: c.surface, borderColor: c.border },
+        ]}
+      >
         <Text style={styles.sparkle}>✨</Text>
-        <Text style={styles.label}>{modelName}</Text>
+        <Text style={[styles.label, { color: c.foreground }]}>{modelName}</Text>
       </View>
       <TouchableOpacity
-        style={styles.infoBtn}
+        style={[
+          styles.infoBtn,
+          { backgroundColor: c.surface, borderColor: c.border },
+        ]}
         onPress={onInfoClick}
         activeOpacity={0.7}
       >
-        <Text style={styles.infoBtnText}>ⓘ</Text>
+        <Text style={[styles.infoBtnText, { color: c.muted }]}>ⓘ</Text>
       </TouchableOpacity>
     </View>
   );

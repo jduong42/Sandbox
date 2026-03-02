@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import NativeIcon from '../common/NativeIcon';
+import { useTheme } from '../../theme/ThemeContext';
 
 export interface TrainingSession {
   id: number;
@@ -16,27 +17,42 @@ interface TrainingSessionCardProps {
 }
 
 export function TrainingSessionCard({ session }: TrainingSessionCardProps) {
+  const { c } = useTheme();
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[
+        styles.card,
+        { backgroundColor: c.surface, borderColor: c.border },
+      ]}
+      activeOpacity={0.7}
+    >
       <View style={styles.header}>
         <View>
-          <Text style={styles.name}>{session.name}</Text>
-          <Text style={styles.date}>{session.date}</Text>
+          <Text style={[styles.name, { color: c.foreground }]}>
+            {session.name}
+          </Text>
+          <Text style={[styles.date, { color: c.muted }]}>{session.date}</Text>
         </View>
       </View>
 
       <View style={styles.statsRow}>
         <View style={styles.stat}>
           <Text style={styles.statEmoji}>⏱</Text>
-          <Text style={styles.statText}>{session.duration}</Text>
+          <Text style={[styles.statText, { color: c.foreground }]}>
+            {session.duration}
+          </Text>
         </View>
         <View style={styles.stat}>
           <Text style={styles.statEmoji}>🔥</Text>
-          <Text style={styles.statText}>{session.calories} cal</Text>
+          <Text style={[styles.statText, { color: c.foreground }]}>
+            {session.calories} cal
+          </Text>
         </View>
         <View style={styles.stat}>
           <Text style={styles.statEmoji}>❤️</Text>
-          <Text style={styles.statText}>{session.heartRate} bpm</Text>
+          <Text style={[styles.statText, { color: c.foreground }]}>
+            {session.heartRate} bpm
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -45,11 +61,9 @@ export function TrainingSessionCard({ session }: TrainingSessionCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.5)',
   },
   header: {
     flexDirection: 'row',
@@ -59,11 +73,9 @@ const styles = StyleSheet.create({
   name: {
     fontWeight: '600',
     fontSize: 18,
-    color: '#ffffff',
   },
   date: {
     fontSize: 14,
-    color: '#cbd5e1',
     marginTop: 2,
   },
   statsRow: {
@@ -80,6 +92,5 @@ const styles = StyleSheet.create({
   },
   statText: {
     fontSize: 14,
-    color: '#e2e8f0',
   },
 });

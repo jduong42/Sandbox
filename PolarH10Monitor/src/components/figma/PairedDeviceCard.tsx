@@ -31,7 +31,7 @@ export function PairedDeviceCard({
         <View
           style={[
             styles.iconBox,
-            device.isActive ? styles.iconActive : styles.iconInactive,
+            device.isActive ? styles.iconActive : { backgroundColor: c.accent },
           ]}
         >
           <Text style={styles.bluetoothEmoji}>📶</Text>
