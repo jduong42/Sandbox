@@ -8,7 +8,6 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -20,7 +19,7 @@ import { llamaTextGenerationService } from '../services/LlamaTextGenerationServi
 import { createSportsPrompt } from '../prompts/sportsPrompts';
 import { useTheme } from '../theme/ThemeContext';
 
-const MODEL_DISPLAY_NAME = 'model_q4km';
+const MODEL_DISPLAY_NAME = 'Llama 3.2 3B - Sports Science';
 
 const INITIAL_MESSAGE: Message = {
   id: 0,
@@ -60,6 +59,25 @@ export function FigmaAIChatScreen() {
     );
   };
 
+  // Strip any incomplete trailing sentence that slipped past stop tokens
+  const cleanResponse = (text: string): string => {
+    let t = text.trim();
+    if (t.length === 0) return t;
+    // Strip any HTML/script tags the model may hallucinate
+    t = t.replace(/<script[\s\S]*?<\/script>/gi, '');
+    t = t.replace(/<style[\s\S]*?<\/style>/gi, '');
+    t = t.replace(/<[^>]+>/g, '');
+    t = t.trim();
+    // Cut at the last complete sentence if it ends mid-sentence
+    const lastPunct = Math.max(
+      t.lastIndexOf('.'),
+      t.lastIndexOf('!'),
+      t.lastIndexOf('?'),
+    );
+    if (lastPunct > t.length * 0.5) return t.slice(0, lastPunct + 1).trim();
+    return t;
+  };
+
   const handleSend = async () => {
     const text = inputValue.trim();
     if (!text || isGenerating) return;
@@ -69,36 +87,101 @@ export function FigmaAIChatScreen() {
       role: 'user',
       content: text,
     };
-    setMessages(prev => [...prev, userMsg]);
+
+    // Insert assistant placeholder immediately so the user sees it start typing
+    const assistantId = ++nextId.current;
+    const assistantPlaceholder: Message = {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      isStreaming: true,
+    };
+
+    setMessages(prev => [...prev, userMsg, assistantPlaceholder]);
     setInputValue('');
     setIsGenerating(true);
     scrollToBottom();
 
     try {
       const prompt = createSportsPrompt(text);
-      const result = await llamaTextGenerationService.generateText(prompt, {
-        maxTokens: 450,
-        temperature: 0.4,
-        stopTokens: ['<|im_end|>', '</s>'],
-      });
+      let accumulated = '';
 
-      const aiMsg: Message = {
-        id: ++nextId.current,
-        role: 'assistant',
-        content: result.success
-          ? result.generatedText
-          : "I'm having trouble responding right now. Please try again.",
-      };
-      setMessages(prev => [...prev, aiMsg]);
-    } catch {
-      setMessages(prev => [
-        ...prev,
+      const result = await llamaTextGenerationService.generateTextStreaming(
+        prompt,
         {
-          id: ++nextId.current,
-          role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
+          maxTokens: 300,
+          temperature: 0.4,
+          stopTokens: [
+            '<|im_end|>',
+            '</s>',
+            // Disclaimer loop patterns
+            'This information is for general educational purposes only and should not',
+            'This response is for general educational purposes and should not',
+            'This advice is for general guidance only and should not replace',
+            'For any health concerns, please consult a qualified healthcare professional. Individual',
+            // Trailing filler chain patterns seen in logs
+            'Remember, individual needs vary',
+            'Individual needs vary',
+            'Always prioritize recovery and listen',
+            'Always prioritize your health',
+            "it's always best to chat with a qualified",
+            'For personalized advice',
+            'for personalized guidance',
+            'consulting with a sports nutritionist',
+            'consider working with a',
+            'Always consult with a qualified',
+            'This information is for general educational',
+            // HTML/script injection stop tokens
+            '<script>',
+            '<style>',
+            // System-prompt leakage
+            'Example of a perfect answer',
+            'Maximum 150 words',
+            'No filler openers',
+            'You are a sports science assistant',
+          ],
         },
-      ]);
+        (token: string) => {
+          accumulated += token;
+          const snapshot = accumulated;
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantId
+                ? { ...m, content: snapshot, isStreaming: true }
+                : m,
+            ),
+          );
+          scrollToBottom();
+        },
+        text,
+      );
+
+      // Finalise message with the clean trimmed response
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantId
+            ? {
+                ...m,
+                content: result.success
+                  ? cleanResponse(result.generatedText)
+                  : "I'm having trouble responding right now. Please try again.",
+                isStreaming: false,
+              }
+            : m,
+        ),
+      );
+    } catch {
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantId
+            ? {
+                ...m,
+                content: 'Sorry, I encountered an error. Please try again.',
+                isStreaming: false,
+              }
+            : m,
+        ),
+      );
     } finally {
       setIsGenerating(false);
       scrollToBottom();
@@ -161,21 +244,6 @@ export function FigmaAIChatScreen() {
             {messages.map(msg => (
               <ChatMessage key={msg.id} message={msg} />
             ))}
-            {isGenerating && (
-              <View style={styles.typingRow}>
-                <View
-                  style={[
-                    styles.typingBubble,
-                    { backgroundColor: c.surface, borderColor: c.border },
-                  ]}
-                >
-                  <ActivityIndicator size="small" color={t.colors.muted} />
-                  <Text style={[styles.typingText, { color: c.muted }]}>
-                    AI is thinking...
-                  </Text>
-                </View>
-              </View>
-            )}
           </ScrollView>
 
           {/* Input */}
@@ -296,25 +364,6 @@ const styles = StyleSheet.create({
   messagesContent: {
     paddingHorizontal: t.spacing.xl,
     paddingVertical: t.spacing.lg,
-  },
-  typingRow: {
-    flexDirection: 'row',
-    marginBottom: t.spacing.lg,
-  },
-  typingBubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: t.colors.surface,
-    borderWidth: 1,
-    borderColor: t.colors.border,
-    borderRadius: 16,
-    paddingHorizontal: t.spacing.lg,
-    paddingVertical: t.spacing.md,
-  },
-  typingText: {
-    fontSize: t.typography.sizes.sm,
-    color: t.colors.muted,
   },
   inputArea: {
     paddingHorizontal: t.spacing.xl,
