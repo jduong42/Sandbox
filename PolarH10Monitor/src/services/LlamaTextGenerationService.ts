@@ -1,6 +1,7 @@
 import { LlamaContext, initLlama } from 'llama.rn';
 import { logger } from '../utils/logger';
 import { createSportsPrompt, PROMPT_CONFIG } from '../prompts/sportsPrompts';
+import { responseLogger } from '../utils/ResponseLogger';
 
 export interface LlamaGenerationResult {
   success: boolean;
@@ -167,6 +168,81 @@ class LlamaTextGenerationService {
       const processingTime = Date.now() - startTime;
       logger.error('❌ Llama generation failed:', error);
 
+      return {
+        success: false,
+        generatedText: '',
+        tokenCount: 0,
+        processingTime,
+        error: error instanceof Error ? error.message : 'Generation failed',
+      };
+    }
+  }
+
+  /**
+   * Generate text with streaming — calls onToken for every token produced,
+   * allowing the UI to update incrementally.
+   */
+  async generateTextStreaming(
+    prompt: string,
+    config: LlamaGenerationConfig,
+    onToken: (token: string) => void,
+    userQuery?: string,
+  ): Promise<LlamaGenerationResult> {
+    const startTime = Date.now();
+
+    if (!this.isInitialized || !this.context) {
+      return {
+        success: false,
+        generatedText: '',
+        tokenCount: 0,
+        processingTime: 0,
+        error: 'Service not initialized',
+      };
+    }
+
+    try {
+      logger.info('🧠 Streaming text generation started...');
+
+      const response = await this.context.completion(
+        {
+          prompt,
+          n_predict: config.maxTokens,
+          stop: config.stopTokens,
+          temperature: config.temperature,
+          top_p: 0.9,
+          top_k: 40,
+          penalty_repeat: 1.1,
+        },
+        (data: { token: string }) => {
+          onToken(data.token);
+        },
+      );
+
+      const processingTime = Date.now() - startTime;
+      logger.info(
+        `✅ Streamed ${response.tokens_predicted} tokens in ${processingTime}ms`,
+      );
+
+      // Log raw response for prompt engineering analysis
+      responseLogger.log({
+        ts: new Date().toISOString(),
+        prompt,
+        userQuery: userQuery ?? '',
+        rawResponse: response.text,
+        trimmed: response.text.trim(),
+        tokens: response.tokens_predicted || 0,
+        ms: processingTime,
+      });
+
+      return {
+        success: true,
+        generatedText: response.text.trim(),
+        tokenCount: response.tokens_predicted || 0,
+        processingTime,
+      };
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      logger.error('❌ Llama streaming generation failed:', error);
       return {
         success: false,
         generatedText: '',

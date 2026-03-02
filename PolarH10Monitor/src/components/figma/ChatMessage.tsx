@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import Markdown from 'react-native-markdown-display';
 import { figmaTheme as t } from '../../theme/figmaTheme';
 import { useTheme } from '../../theme/ThemeContext';
 
@@ -51,10 +52,53 @@ export function ChatMessage({ message }: ChatMessageProps) {
               { backgroundColor: c.surface, borderColor: c.border },
             ]}
           >
-            <Text style={[styles.assistantText, { color: c.foreground }]}>
-              {message.content}
-              {message.isStreaming && <Text style={styles.cursor}> ▌</Text>}
-            </Text>
+            {message.isStreaming && message.content === '' ? (
+              <Text style={[styles.assistantText, { color: c.muted }]}>
+                Thinking<Text style={styles.cursor}>…</Text>
+              </Text>
+            ) : (
+              <Markdown
+                style={{
+                  body: {
+                    color: c.foreground,
+                    fontSize: t.typography.sizes.sm,
+                    lineHeight: 20,
+                    margin: 0,
+                    padding: 0,
+                  },
+                  strong: { color: c.foreground, fontWeight: '700' },
+                  em: { color: c.foreground, fontStyle: 'italic' },
+                  bullet_list: { marginTop: 4, marginBottom: 4 },
+                  ordered_list: { marginTop: 4, marginBottom: 4 },
+                  list_item: { marginBottom: 2 },
+                  paragraph: { marginTop: 0, marginBottom: 8 },
+                  code_inline: {
+                    backgroundColor: c.accent,
+                    color: c.foreground,
+                    borderRadius: 4,
+                    paddingHorizontal: 4,
+                    fontSize: t.typography.sizes.xs,
+                    fontFamily: 'Courier',
+                  },
+                  fence: {
+                    backgroundColor: c.accent,
+                    borderRadius: 8,
+                    padding: 8,
+                    marginVertical: 4,
+                  },
+                  code_block: {
+                    backgroundColor: c.accent,
+                    borderRadius: 8,
+                    padding: 8,
+                    color: c.foreground,
+                    fontSize: t.typography.sizes.xs,
+                    fontFamily: 'Courier',
+                  },
+                }}
+              >
+                {message.content + (message.isStreaming ? ' ▌' : '')}
+              </Markdown>
+            )}
           </View>
         )}
       </View>
