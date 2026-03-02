@@ -1,5 +1,8 @@
 // Adapter for the existing LlamaTextGenerationService to work with SML Chat interface
-import { llamaTextGenerationService, LlamaGenerationResult } from './LlamaTextGenerationService';
+import {
+  llamaTextGenerationService,
+  LlamaGenerationResult,
+} from './LlamaTextGenerationService';
 import { logger } from '../utils/logger';
 
 export interface SportsAIResponse {
@@ -53,25 +56,36 @@ class SportsAIService {
     try {
       // Create enhanced prompt with context
       let enhancedPrompt = question;
-      
+
       if (context) {
         const contextInfo = [];
-        if (context.heartRate) contextInfo.push(`Current heart rate: ${context.heartRate} bpm`);
-        if (context.restingHeartRate) contextInfo.push(`Resting heart rate: ${context.restingHeartRate} bpm`);
-        if (context.maxHeartRate) contextInfo.push(`Max heart rate: ${context.maxHeartRate} bpm`);
-        if (context.activityType) contextInfo.push(`Activity: ${context.activityType}`);
-        if (context.duration) contextInfo.push(`Duration: ${context.duration} minutes`);
-        if (context.intensity) contextInfo.push(`Intensity: ${context.intensity}`);
-        
+        if (context.heartRate)
+          contextInfo.push(`Current heart rate: ${context.heartRate} bpm`);
+        if (context.restingHeartRate)
+          contextInfo.push(
+            `Resting heart rate: ${context.restingHeartRate} bpm`,
+          );
+        if (context.maxHeartRate)
+          contextInfo.push(`Max heart rate: ${context.maxHeartRate} bpm`);
+        if (context.activityType)
+          contextInfo.push(`Activity: ${context.activityType}`);
+        if (context.duration)
+          contextInfo.push(`Duration: ${context.duration} minutes`);
+        if (context.intensity)
+          contextInfo.push(`Intensity: ${context.intensity}`);
+
         if (contextInfo.length > 0) {
-          enhancedPrompt = `Context: ${contextInfo.join(', ')}\n\nQuestion: ${question}`;
+          enhancedPrompt = `Context: ${contextInfo.join(
+            ', ',
+          )}\n\nQuestion: ${question}`;
         }
       }
 
-      const result: LlamaGenerationResult = await llamaTextGenerationService.generateSportsAdvice(
-        enhancedPrompt,
-        200 // Max tokens for chat responses
-      );
+      const result: LlamaGenerationResult =
+        await llamaTextGenerationService.generateSportsAdvice(
+          enhancedPrompt,
+          200, // Max tokens for chat responses
+        );
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to generate response');
@@ -106,19 +120,23 @@ class SportsAIService {
     try {
       // Create specialized heart rate prompt
       let prompt = `Please analyze this heart rate reading: ${heartRate} bpm`;
-      
+
       if (restingHR && maxHR) {
         const hrReserve = maxHR - restingHR;
         const percentage = ((heartRate - restingHR) / hrReserve) * 100;
-        prompt += `\nResting HR: ${restingHR} bpm, Max HR: ${maxHR} bpm (${Math.round(percentage)}% of HR reserve)`;
+        prompt += `\nResting HR: ${restingHR} bpm, Max HR: ${maxHR} bpm (${Math.round(
+          percentage,
+        )}% of HR reserve)`;
       }
 
-      prompt += '\n\nWhat does this heart rate indicate about my current exercise intensity and what training recommendations do you have?';
+      prompt +=
+        '\n\nWhat does this heart rate indicate about my current exercise intensity and what training recommendations do you have?';
 
-      const result: LlamaGenerationResult = await llamaTextGenerationService.generateSportsAdvice(
-        prompt,
-        180 // Focused response for HR advice
-      );
+      const result: LlamaGenerationResult =
+        await llamaTextGenerationService.generateSportsAdvice(
+          prompt,
+          180, // Focused response for HR advice
+        );
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to generate heart rate advice');
@@ -155,15 +173,30 @@ class SportsAIService {
     const questionLower = question.toLowerCase();
     const responseLower = response.toLowerCase();
 
-    if (questionLower.includes('heart rate') || responseLower.includes('heart rate')) {
+    if (
+      questionLower.includes('heart rate') ||
+      responseLower.includes('heart rate')
+    ) {
       return 'heart_rate';
-    } else if (questionLower.includes('zone') || responseLower.includes('zone')) {
+    } else if (
+      questionLower.includes('zone') ||
+      responseLower.includes('zone')
+    ) {
       return 'training_zones';
-    } else if (questionLower.includes('training') || questionLower.includes('workout')) {
+    } else if (
+      questionLower.includes('training') ||
+      questionLower.includes('workout')
+    ) {
       return 'training';
-    } else if (questionLower.includes('recovery') || responseLower.includes('recovery')) {
+    } else if (
+      questionLower.includes('recovery') ||
+      responseLower.includes('recovery')
+    ) {
       return 'recovery';
-    } else if (questionLower.includes('nutrition') || responseLower.includes('nutrition')) {
+    } else if (
+      questionLower.includes('nutrition') ||
+      responseLower.includes('nutrition')
+    ) {
       return 'nutrition';
     } else {
       return 'general';

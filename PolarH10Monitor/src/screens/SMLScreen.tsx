@@ -12,12 +12,7 @@ import NativeIcon from '../components/common/NativeIcon';
 import { theme } from '../theme';
 import { useSportsAI, useHeartRateMonitoring } from '../hooks';
 import { SportsAIResponse } from '../services';
-import {
-  SMLHeader,
-  SMLMessage,
-  SMLInput,
-  SMLWelcome,
-} from '../components/sml';
+import { SMLHeader, SMLMessage, SMLInput, SMLWelcome } from '../components/sml';
 import { smlScreenStyles as styles } from '../theme/smlScreen';
 
 interface ChatMessage {
@@ -74,7 +69,7 @@ const SMLScreen: React.FC = () => {
 
     const userQuestion = question.trim();
     setQuestion('');
-    
+
     // Add user message
     addMessage('user', userQuestion);
 
@@ -83,7 +78,10 @@ const SMLScreen: React.FC = () => {
       addMessage('ai', response.response, response);
     } catch (error) {
       console.error('Error asking question:', error);
-      addMessage('ai', 'Sorry, I could not process your question at the moment.');
+      addMessage(
+        'ai',
+        'Sorry, I could not process your question at the moment.',
+      );
     }
   };
 
@@ -95,7 +93,10 @@ const SMLScreen: React.FC = () => {
       addMessage('ai', response.response, response);
     } catch (error) {
       console.error('Error getting heart rate advice:', error);
-      addMessage('ai', 'Sorry, I could not analyze your heart rate at the moment.');
+      addMessage(
+        'ai',
+        'Sorry, I could not analyze your heart rate at the moment.',
+      );
     }
   };
 
