@@ -1,172 +1,105 @@
 import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Animated, Easing, Platform, Dimensions } from 'react-native';
-import NativeIcon from '../components/common/NativeIcon';
-import { theme } from '../theme';
-import {
-  HomeScreen,
-  DataScreen,
-  AnalyticsScreen,
-  LlamaTestScreen,
-  SettingsScreen,
-  TrainingDataScreen,
-} from '../screens';
-import LogViewerScreen from '../screens/LogViewerScreen';
+import { Platform, Text } from 'react-native';
+import { figmaTheme as t } from '../theme/figmaTheme';
+import { FigmaHomeScreen } from '../screens/FigmaHomeScreen';
+import { FigmaStartWorkoutScreen } from '../screens/FigmaStartWorkoutScreen';
+import { FigmaAIChatScreen } from '../screens/FigmaAIChatScreen';
+import { FigmaSettingsScreen } from '../screens/FigmaSettingsScreen';
 
 const Tab = createBottomTabNavigator();
 
-// Icon mapping for better maintainability
-const TAB_ICONS = {
-  Home: 'home',
-  Training: 'fitness-center',
-  Data: 'bar-chart',
-  AI: 'smart-toy', // Llama.rn AI assistant
-  Settings: 'settings',
-  Logs: 'article',
-} as const;
+const FIGMA_TABS = [
+  { name: 'FigmaHome', label: 'Home', emoji: '🏠', component: FigmaHomeScreen },
+  {
+    name: 'FigmaWorkout',
+    label: 'Workout',
+    emoji: '💪',
+    component: FigmaStartWorkoutScreen,
+  },
+  {
+    name: 'FigmaAIChat',
+    label: 'Chat',
+    emoji: '🤖',
+    component: FigmaAIChatScreen,
+  },
+  {
+    name: 'FigmaSettings',
+    label: 'More',
+    emoji: '⚙️',
+    component: FigmaSettingsScreen,
+  },
+] as const;
 
 export default function MainTabNavigator() {
-  console.log('🚀 MainTabNavigator rendered on', Platform.OS);
-
   useEffect(() => {
-    console.log('📱 MainTabNavigator mounted, navigation should be working');
-    console.log('🔧 Platform:', Platform.OS, Platform.Version);
+    console.log(
+      '📱 MainTabNavigator mounted on',
+      Platform.OS,
+      Platform.Version,
+    );
   }, []);
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        // Ensure proper touch handling for physical device
         tabBarHideOnKeyboard: true,
-        tabBarIcon: ({
-          focused,
-          color,
-          size,
-        }: {
-          focused: boolean;
-          color: string;
-          size: number;
-        }) => {
-          const iconName =
-            TAB_ICONS[route.name as keyof typeof TAB_ICONS] || 'help';
-
+        tabBarIcon: ({ focused }) => {
+          const tab = FIGMA_TABS.find(t => t.name === route.name);
           return (
-            <NativeIcon
-              name={iconName}
-              size={Math.max(size + 4, 26)} // Larger touch targets for physical device
-              color={focused ? theme.colors.primary : color}
-            />
+            <Text
+              style={{
+                fontSize: 22,
+                opacity: focused ? 1 : 0.5,
+              }}
+            >
+              {tab?.emoji ?? '●'}
+            </Text>
           );
         },
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarActiveTintColor: t.colors.primary,
+        tabBarInactiveTintColor: t.colors.muted,
         tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.border,
+          backgroundColor: t.colors.surface,
+          borderTopColor: t.colors.border,
           borderTopWidth: 1,
-          paddingBottom: theme.spacing.lg, // More padding for easier touch
-          paddingTop: theme.spacing.sm,
-          paddingHorizontal: theme.spacing.md,
-          height: 90, // Taller for better touch targets
-          elevation: 8, // Android shadow
-          shadowOffset: { width: 0, height: -2 }, // iOS shadow
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
+          paddingBottom: 16,
+          paddingTop: 8,
+          height: 84,
+          elevation: 8,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.15,
+          shadowRadius: 6,
         },
         tabBarLabelStyle: {
-          fontSize: theme.typography.sizes.sm, // Larger text
-          fontWeight: theme.typography.weights.medium,
+          fontSize: 11,
+          fontWeight: '500',
           marginTop: 4,
-          marginBottom: 6,
+          marginBottom: 4,
         },
         tabBarItemStyle: {
-          paddingVertical: 8, // More touch area
+          paddingVertical: 4,
         },
-        // Ensure headers are visible for navigation feedback
         headerStyle: {
-          backgroundColor: theme.colors.background,
-          borderBottomColor: theme.colors.border,
+          backgroundColor: t.colors.background,
+          borderBottomColor: t.colors.border,
           borderBottomWidth: 1,
         },
-        headerTintColor: theme.colors.text,
+        headerTintColor: t.colors.foreground,
         headerTitleStyle: {
-          fontWeight: theme.typography.weights.bold,
-          fontSize: theme.typography.sizes.lg,
+          fontWeight: '600',
+          fontSize: 17,
         },
       })}
     >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          title: 'PolarH10Monitor',
-        }}
-        listeners={{
-          tabPress: () => {
-            console.log('🏠 Home tab pressed');
-          },
-        }}
-      />
-      <Tab.Screen
-        name="Training"
-        component={TrainingDataScreen}
-        options={{
-          title: 'Training Data',
-        }}
-        listeners={{
-          tabPress: () => {
-            console.log('🏃‍♂️ Training tab pressed');
-          },
-        }}
-      />
-      <Tab.Screen
-        name="Data"
-        component={AnalyticsScreen}
-        options={{
-          title: 'Analytics',
-        }}
-        listeners={{
-          tabPress: () => {
-            console.log('📊 Data tab pressed');
-          },
-        }}
-      />
-      <Tab.Screen
-        name="AI"
-        component={LlamaTestScreen}
-        options={{
-          title: 'AI Assistant',
-        }}
-        listeners={{
-          tabPress: () => {
-            console.log('🤖 AI tab pressed');
-          },
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          title: 'Settings',
-        }}
-        listeners={{
-          tabPress: () => {
-            console.log('⚙️ Settings tab pressed');
-          },
-        }}
-      />
-      <Tab.Screen
-        name="Logs"
-        component={LogViewerScreen}
-        options={{
-          title: 'Logs',
-        }}
-        listeners={{
-          tabPress: () => {
-            console.log('📄 Logs tab pressed');
-          },
-        }}
-      />
+      {FIGMA_TABS.map(tab => (
+        <Tab.Screen
+          key={tab.name}
+          name={tab.name}
+          component={tab.component}
+          options={{ title: tab.label }}
+        />
+      ))}
     </Tab.Navigator>
   );
 }

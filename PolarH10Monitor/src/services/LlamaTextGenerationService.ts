@@ -39,11 +39,11 @@ class LlamaTextGenerationService {
       logger.info('🦙 Initializing Llama Text Generation Service...');
 
       // Use provided path or default bundle path (fine-tuned model)
+      // 👇 Update this filename to match your new model's .gguf filename
+      const MODEL_FILENAME = 'model_q4km.gguf';
       this.modelPath =
         modelPath ||
-        `${
-          require('react-native-fs').MainBundlePath
-        }/deepseek-r1-distill-sports-science-lora-q4_k_m.gguf`;
+        `${require('react-native-fs').MainBundlePath}/${MODEL_FILENAME}`;
 
       logger.info(`📁 Model path: ${this.modelPath}`);
       logger.info('🔄 Creating Llama context...');

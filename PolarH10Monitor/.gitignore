@@ -130,3 +130,6 @@ scripts/runs/
 # Pip installation artifacts
 scripts/=*
 **/=*
+
+# FigmaMake files
+figmaMake

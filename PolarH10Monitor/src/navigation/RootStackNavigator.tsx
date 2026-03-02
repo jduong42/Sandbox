@@ -5,9 +5,7 @@ import {
   CardStyleInterpolators,
 } from '@react-navigation/stack';
 import { Easing } from 'react-native';
-import { theme } from '../theme';
 import MainTabNavigator from './MainTabNavigator';
-import DetailScreen from '../screens/DetailScreen';
 
 const Stack = createStackNavigator();
 
@@ -69,7 +67,6 @@ const RootStackNavigator: React.FC = () => {
       }}
     >
       <Stack.Screen name="Main" component={MainTabNavigator} />
-      <Stack.Screen name="Detail" component={DetailScreen} />
     </Stack.Navigator>
   );
 };
