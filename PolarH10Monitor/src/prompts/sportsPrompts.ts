@@ -5,19 +5,22 @@
  * Optimized based on Gemini's recommendations for safety, structure, and effectiveness.
  */
 
-export const SPORTS_SCIENCE_SYSTEM_PROMPT = `You are a sports science assistant. Give concise, direct, evidence-based answers. Maximum 150 words. No filler openers. Stop after your last factual sentence.
+export const SPORTS_SCIENCE_SYSTEM_PROMPT = `You are a sports science assistant. You must respond ONLY with a JSON object in exactly this format:
+{"answer": "your response here"}
 
-Only add "For pain or injury, consult a healthcare professional." if the question is specifically about pain or injury. Never add it otherwise. Never write "individual needs vary", "listen to your body", "always prioritize", or "For personalized advice".
+Rules for the answer value:
+- Use \\n for every line break (this is inside a JSON string)
+- Use **bold** for key terms
+- Use bullet points (lines starting with -) for lists
+- No filler openers (do not start with "Great question" etc.)
+- No disclaimers unless the question is specifically about pain or injury
+- For simple factual questions: be concise
+- For training plans or structured content: include full detail, do not cut short
+- Your entire output must be the JSON object — nothing before { and nothing after }
 
-Use **bold** for key terms. Use bullet points where listing items.
-
-Example of a perfect answer:
+Example:
 Q: What is VO2 Max?
-A: **VO2 Max** is the maximum volume of oxygen your body can use per minute during intense exercise, measured in ml/kg/min. It is the strongest single predictor of endurance performance.
-
-- Untrained adults typically score 35-40; trained runners often exceed 60.
-- It improves most in the first 8-12 weeks of consistent training, then more slowly.
-- **Interval training** is the fastest way to raise it: 4 x 4 minutes at 90-95% max heart rate, with 3 minutes easy between each.`;
+{"answer": "**VO2 Max** is the maximum volume of oxygen your body can use per minute during intense exercise, measured in ml/kg/min. It is the strongest single predictor of endurance performance.\\n\\n- Untrained adults typically score 35-40; trained runners often exceed 60\\n- Improves most in the first 8-12 weeks of consistent training\\n\\n**Interval training** is the fastest way to raise it: 4 x 4 min at 90-95% max HR, 3 min easy between each."}`;
 
 export const ORIGINAL_SPORTS_SCIENCE_PROMPT = `You are an expert sports scientist and exercise training specialist with deep knowledge of athletic performance, recovery, training optimization, biomechanics and injury prevention. 
 
@@ -60,6 +63,8 @@ export function createSportsPrompt(
     ? SPORTS_SCIENCE_SYSTEM_PROMPT
     : ORIGINAL_SPORTS_SCIENCE_PROMPT;
 
+  // Prime the assistant turn with the opening JSON so the model only generates
+  // the answer value — nothing before or after the JSON wrapper.
   return `<|im_start|>system
 ${systemPrompt}
 <|im_end|>
@@ -67,7 +72,7 @@ ${systemPrompt}
 ${userPrompt}
 <|im_end|>
 <|im_start|>assistant
-`;
+{"answer": "`;
 }
 
 /**
@@ -76,6 +81,6 @@ ${userPrompt}
 export const PROMPT_CONFIG = {
   defaultSystemPrompt: SPORTS_SCIENCE_SYSTEM_PROMPT,
   fallbackSystemPrompt: ORIGINAL_SPORTS_SCIENCE_PROMPT,
-  version: '3.3-bold-bullets-hard-stop',
-  lastUpdated: '2026-03-02',
+  version: '4.0-json-output',
+  lastUpdated: '2026-03-03',
 } as const;

@@ -59,23 +59,23 @@ export function FigmaAIChatScreen() {
     );
   };
 
-  // Strip any incomplete trailing sentence that slipped past stop tokens
-  const cleanResponse = (text: string): string => {
-    let t = text.trim();
-    if (t.length === 0) return t;
-    // Strip any HTML/script tags the model may hallucinate
-    t = t.replace(/<script[\s\S]*?<\/script>/gi, '');
-    t = t.replace(/<style[\s\S]*?<\/style>/gi, '');
-    t = t.replace(/<[^>]+>/g, '');
-    t = t.trim();
-    // Cut at the last complete sentence if it ends mid-sentence
-    const lastPunct = Math.max(
-      t.lastIndexOf('.'),
-      t.lastIndexOf('!'),
-      t.lastIndexOf('?'),
-    );
-    if (lastPunct > t.length * 0.5) return t.slice(0, lastPunct + 1).trim();
-    return t;
+  // The model generates only the JSON answer value (prompt primes with `{"answer": "`)
+  // so we just need to close the string and extract it.
+  const parseJsonResponse = (raw: string): string => {
+    // raw is everything the model generated after `{"answer": "`
+    // Strip the closing `"}` if present, then unescape JSON string sequences.
+    const stripped = raw.replace(/"\s*\}\s*$/, '').trim();
+    try {
+      // Wrap back into valid JSON and parse so \n, \\ etc are handled correctly
+      return JSON.parse(`"${stripped}"`);
+    } catch {
+      // Fallback: manual unescape of the most common sequences
+      return stripped
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '\t')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+    }
   };
 
   const handleSend = async () => {
@@ -109,45 +109,18 @@ export function FigmaAIChatScreen() {
       const result = await llamaTextGenerationService.generateTextStreaming(
         prompt,
         {
-          maxTokens: 300,
+          maxTokens: 700,
           temperature: 0.4,
-          stopTokens: [
-            '<|im_end|>',
-            '</s>',
-            // Disclaimer loop patterns
-            'This information is for general educational purposes only and should not',
-            'This response is for general educational purposes and should not',
-            'This advice is for general guidance only and should not replace',
-            'For any health concerns, please consult a qualified healthcare professional. Individual',
-            // Trailing filler chain patterns seen in logs
-            'Remember, individual needs vary',
-            'Individual needs vary',
-            'Always prioritize recovery and listen',
-            'Always prioritize your health',
-            "it's always best to chat with a qualified",
-            'For personalized advice',
-            'for personalized guidance',
-            'consulting with a sports nutritionist',
-            'consider working with a',
-            'Always consult with a qualified',
-            'This information is for general educational',
-            // HTML/script injection stop tokens
-            '<script>',
-            '<style>',
-            // System-prompt leakage
-            'Example of a perfect answer',
-            'Maximum 150 words',
-            'No filler openers',
-            'You are a sports science assistant',
-          ],
+          stopTokens: ['"}', '<|im_end|>', '</s>'],
         },
         (token: string) => {
           accumulated += token;
-          const snapshot = accumulated;
+          // Unescape \n sequences live so paragraphs render during streaming
+          const display = parseJsonResponse(accumulated);
           setMessages(prev =>
             prev.map(m =>
               m.id === assistantId
-                ? { ...m, content: snapshot, isStreaming: true }
+                ? { ...m, content: display, isStreaming: true }
                 : m,
             ),
           );
@@ -156,14 +129,14 @@ export function FigmaAIChatScreen() {
         text,
       );
 
-      // Finalise message with the clean trimmed response
+      // Finalise message with the clean parsed response
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
             ? {
                 ...m,
                 content: result.success
-                  ? cleanResponse(result.generatedText)
+                  ? parseJsonResponse(result.generatedText)
                   : "I'm having trouble responding right now. Please try again.",
                 isStreaming: false,
               }

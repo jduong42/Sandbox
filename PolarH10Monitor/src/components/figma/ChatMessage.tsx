@@ -15,6 +15,19 @@ interface ChatMessageProps {
   message: Message;
 }
 
+/**
+ * The model often emits single \n between paragraphs/bullet items.
+ * Markdown needs a blank line (\n\n) to break paragraphs or start a list.
+ * This function upgrades every single newline that isn't already part of a
+ * double-newline into a double-newline so the renderer creates proper nodes.
+ */
+function normalizeMarkdown(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n') // normalise CRLF
+    .replace(/\n{3,}/g, '\n\n') // collapse 3+ blank lines → 1 blank line
+    .replace(/([^\n])\n([^\n])/g, '$1\n\n$2'); // single \n → \n\n
+}
+
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const { c } = useTheme();
@@ -62,16 +75,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
                   body: {
                     color: c.foreground,
                     fontSize: t.typography.sizes.sm,
-                    lineHeight: 20,
+                    lineHeight: 22,
                     margin: 0,
                     padding: 0,
                   },
                   strong: { color: c.foreground, fontWeight: '700' },
                   em: { color: c.foreground, fontStyle: 'italic' },
-                  bullet_list: { marginTop: 4, marginBottom: 4 },
-                  ordered_list: { marginTop: 4, marginBottom: 4 },
-                  list_item: { marginBottom: 2 },
-                  paragraph: { marginTop: 0, marginBottom: 8 },
+                  bullet_list: { marginTop: 6, marginBottom: 6 },
+                  ordered_list: { marginTop: 6, marginBottom: 6 },
+                  list_item: { marginBottom: 4 },
+                  paragraph: { marginTop: 0, marginBottom: 10 },
                   code_inline: {
                     backgroundColor: c.accent,
                     color: c.foreground,
@@ -96,7 +109,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
                   },
                 }}
               >
-                {message.content + (message.isStreaming ? ' ▌' : '')}
+                {normalizeMarkdown(message.content) +
+                  (message.isStreaming ? ' ▌' : '')}
               </Markdown>
             )}
           </View>
