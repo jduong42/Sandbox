@@ -1,27 +1,143 @@
 # PolarH10Monitor
 
-A React Native application for monitoring and recording training sessions with Polar H10 heart rate sensors. The app features Bluetooth Low Energy connectivity, session recording with device-internal storage, and comprehensive training data management.
+A React Native application for monitoring and recording training sessions with Polar H10 heart rate sensors. The app features Bluetooth Low Energy connectivity, real-time heart rate tracking, AI-powered sports science coaching, and a full user account system with encrypted local storage.
 
 ## 📱 Features
 
-- **Bluetooth LE Integration**: Connect to Polar H10 heart rate monitors
-- **Session Recording**: Start/stop recording sessions with device-internal storage
-- **Real-time Monitoring**: Live heart rate data display during training
-- **Session History**: Track and manage completed training sessions
-- **Device Management**: Automatic device discovery and connection history
-- **Cross-platform**: Native iOS and Android support
+### Core
 
-## 📚 Documentation
+- **Bluetooth LE Integration** — Connect to Polar H10 heart rate monitors via `react-native-ble-plx`
+- **Session Recording** — Start/stop recording sessions with device-internal storage
+- **Real-time Monitoring** — Live heart rate data display during training
+- **Session History** — Track and manage completed training sessions
+- **Device Management** — Automatic device discovery and connection history
+- **Cross-platform** — Native iOS and Android support
 
-For detailed guides, implementation details, and testing procedures, see the [docs](./docs/) folder:
+### AI Sports Coaching
 
-- **[Testing Guide](./docs/MANUAL_TESTING_CHECKLIST.md)** - Comprehensive testing checklist
-- **[Architecture Overview](./docs/BLE_SERVICE_REFACTORING.md)** - BLE service implementation
-- **[Implementation Details](./docs/README.md)** - Full documentation index
+- **Streaming AI Chat** — On-device LLM inference via `llama.rn` with real-time token streaming
+- **Sports Science Prompts** — Structured prompt system (v4.0) with JSON output contract for calorie, TRIMP, and recovery recommendations
+- **Markdown Rendering** — AI responses rendered with proper formatting (bold, lists, headers)
+- **Response Logger** — Persistent log viewer for debugging AI output history
+- **Model Switcher** — Swap between bundled GGUF models at runtime
+
+### User & Profile
+
+- **Accounts** — Sign up / log in with name, email, and password (local auth, no backend)
+- **Encrypted Storage** — Credentials and profile data stored with AES-256 encryption via `react-native-encrypted-storage` (iOS Keychain / Android EncryptedSharedPreferences), with an AsyncStorage fallback for simulator environments
+- **Profile Settings** — Sex, age, height, weight, activity level, and body fat percentage
+- **Calorie Targets** — Mifflin-St Jeor TDEE with optional Katch-McArdle formula when body fat is known
+- **Physiology Store** — Zustand-backed store for user physiology, persisted across sessions
+
+### UX
+
+- **Figma Design System** — Full dark/light theme UI rebuilt from Figma mockups
+- **Animated Toast Notifications** — Slide-up success/error/warning toasts with auto-dismiss (4.5s), replacing all inline error boxes
+- **Profile Modal** — Inline sign-up/login sheet accessible from the home screen avatar
+
+### Developer Tools
+
+- **Dev Tab** — `__DEV__`-only bottom tab (automatically hidden in production) for:
+  - Viewing and deleting the current user
+  - Wiping EncryptedStorage and/or AsyncStorage
+  - Inspecting all AsyncStorage keys and their (encrypted) values
 
 ---
 
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+## 🏗 Architecture
+
+```
+src/
+├── components/
+│   ├── figma/          # Figma-sourced UI components (ProfileModal, StatCard, …)
+│   ├── common/         # Shared primitives (Toast, ErrorBoundary, …)
+│   └── AppContainer    # Root layout, AuthProvider, splash logic
+├── context/
+│   └── AuthContext     # Thin wrapper over authStore — backwards-compatible useAuth()
+├── hooks/              # useBLEConnection, useSessionRecording, useSportsAI, useToast, …
+├── navigation/
+│   ├── RootStackNavigator   # Stack: Main tabs + ProfileSettings modal
+│   ├── MainTabNavigator     # Bottom tabs (Home / Workout / Chat / More / Dev*)
+│   └── NavigationTypes      # Typed param lists
+├── screens/            # FigmaHomeScreen, FigmaAIChatScreen, FigmaProfileSettingsScreen, DevScreen, …
+├── services/           # BLEService, SportsAIService, SessionRecordingService, …
+├── store/
+│   ├── authStore       # Zustand — user session, login/signup/logout actions
+│   └── physiologyStore # Zustand — height, weight, age, activity, body fat
+├── theme/              # figmaTheme (dark/light tokens), legacy theme files
+├── utils/
+│   ├── secureStorage   # secureWrite / secureRead / secureRemove (AES-256 + fallback)
+│   ├── CalorieCalculator # TDEE (Mifflin-St Jeor + Katch-McArdle)
+│   └── ResponseLogger  # AI response persistence
+└── prompts/            # Sports science prompt templates (v4.0)
+```
+
+> **State management**: Zustand v5 throughout. All object selectors use `useShallow` from `zustand/react/shallow` to prevent infinite re-render loops.
+
+---
+
+## 📦 Key Dependencies
+
+| Package                                     | Purpose                                    |
+| ------------------------------------------- | ------------------------------------------ |
+| `react-native-ble-plx`                      | Bluetooth LE                               |
+| `llama.rn`                                  | On-device LLM inference (GGUF)             |
+| `zustand`                                   | Lightweight state management               |
+| `react-native-encrypted-storage`            | OS-level secure storage                    |
+| `crypto-js`                                 | AES-256 encryption layer                   |
+| `react-native-get-random-values`            | `crypto.getRandomValues()` polyfill for RN |
+| `@react-native-async-storage/async-storage` | Storage fallback + general cache           |
+| `react-navigation`                          | Stack + bottom-tab navigation              |
+| `react-native-linear-gradient`              | Gradient UI elements                       |
+| `react-native-safe-area-context`            | Safe area insets                           |
+
+---
+
+## 🚀 Getting Started
+
+> **Prerequisites**: Complete the [React Native environment setup](https://reactnative.dev/docs/set-up-your-environment) first.
+
+### 1. Install dependencies
+
+```sh
+npm install
+```
+
+### 2. iOS — install CocoaPods
+
+```sh
+bundle install          # first clone only
+bundle exec pod install
+```
+
+### 3. Start Metro
+
+```sh
+npm start
+```
+
+### 4. Run the app
+
+```sh
+# iOS
+npm run ios
+
+# Android
+npm run android
+```
+
+---
+
+## 🔧 Troubleshooting
+
+| Issue                               | Fix                                                                                    |
+| ----------------------------------- | -------------------------------------------------------------------------------------- |
+| `crypto.getRandomValues` error      | Ensure `import 'react-native-get-random-values'` is the **first** import in `index.js` |
+| EncryptedStorage fails on simulator | Expected — app automatically falls back to AsyncStorage (data stays AES-encrypted)     |
+| `Promise.allSettled` TS error       | `tsconfig.json` `lib` must be `"es2020"` or later                                      |
+| Infinite re-render from Zustand     | Use `useShallow` for any selector that returns an object                               |
+
+For more help see the [React Native Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
 
 # Getting Started
 
