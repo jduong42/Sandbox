@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,14 @@ import { ActivityRing } from '../components/figma/ActivityRing';
 import { StatCard } from '../components/figma/StatCard';
 import { RecentActivity } from '../components/figma/RecentActivity';
 import { useTheme } from '../theme/ThemeContext';
+import { getRestingCaloriesToday, getTDEE } from '../utils/CalorieCalculator';
+import { ProfileModal } from '../components/figma/ProfileModal';
+import { useAuth } from '../context/AuthContext';
+import {
+  usePhysiologyStore,
+  isPhysiologyComplete,
+  toUserProfile,
+} from '../store/physiologyStore';
 
 const ACTIVITIES = [
   {
@@ -45,6 +53,33 @@ const ACTIVITIES = [
 
 export function FigmaHomeScreen() {
   const { c } = useTheme();
+  const { user } = useAuth();
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const { settings, isLoaded, initialize } = usePhysiologyStore();
+
+  useEffect(() => {
+    if (!isLoaded) initialize();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const userProfile = useMemo(() => toUserProfile(settings), [settings]);
+  const profileComplete = isPhysiologyComplete(settings);
+
+  // Computed from Mifflin-St Jeor BMR prorated to the current time of day.
+  // Uses stored physiology if complete, falls back to population defaults.
+  const restingCalories = useMemo(
+    () => getRestingCaloriesToday(userProfile),
+    [userProfile],
+  );
+  const tdee = useMemo(() => Math.round(getTDEE(userProfile)), [userProfile]);
+  // Move ring goal = TDEE; progress = resting calories so far today
+  const moveProgress = Math.min(
+    100,
+    Math.round((restingCalories / tdee) * 100),
+  );
+  // Exercise ring: 0 until a real HR session runs
+  const exerciseMinutes = 0;
+  const exerciseProgress = Math.round((exerciseMinutes / 30) * 100);
   const currentHour = new Date().getHours();
   const greeting =
     currentHour < 12
@@ -69,15 +104,47 @@ export function FigmaHomeScreen() {
                 {greeting}
               </Text>
               <Text style={[styles.username, { color: c.foreground }]}>
-                Alex
+                {user?.name ?? 'Alex'}
               </Text>
             </View>
-            <TouchableOpacity style={styles.avatar}>
-              <Text style={styles.avatarText}>A</Text>
+            <TouchableOpacity
+              style={styles.avatar}
+              onPress={() => setShowProfileModal(true)}
+              accessibilityLabel="Open profile"
+            >
+              <Text style={styles.avatarText}>{user?.avatar ?? 'A'}</Text>
             </TouchableOpacity>
           </View>
 
           <Text style={[styles.date, { color: c.muted }]}>{today}</Text>
+
+          {/* Calorie disclaimer — visible when physiology profile is incomplete */}
+          {!profileComplete && (
+            <TouchableOpacity
+              style={[
+                styles.disclaimer,
+                {
+                  backgroundColor: c.amberTint,
+                  borderColor: 'rgba(245,158,11,0.4)',
+                },
+              ]}
+              onPress={() => setShowProfileModal(true)}
+              accessibilityLabel="Set up profile for accurate calories"
+            >
+              <Text style={styles.disclaimerIcon}>⚠️</Text>
+              <View style={styles.disclaimerBody}>
+                <Text style={[styles.disclaimerTitle, { color: c.foreground }]}>
+                  Estimates based on placeholder data
+                </Text>
+                <Text style={[styles.disclaimerSub, { color: c.muted }]}>
+                  Complete your profile for personalised calorie calculations
+                </Text>
+              </View>
+              <Text style={[styles.disclaimerArrow, { color: c.muted }]}>
+                ›
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Activity Rings */}
           <View
@@ -90,13 +157,13 @@ export function FigmaHomeScreen() {
               {/* Rings are stacked: largest at bottom, smallest on top */}
               <View style={styles.ringsWrapper}>
                 <ActivityRing
-                  progress={75}
+                  progress={moveProgress}
                   color="rgb(239, 68, 68)"
                   size={192}
                   strokeWidth={12}
                 />
                 <ActivityRing
-                  progress={60}
+                  progress={exerciseProgress}
                   color="rgb(34, 197, 94)"
                   size={168}
                   strokeWidth={12}
@@ -112,7 +179,7 @@ export function FigmaHomeScreen() {
                   <Text
                     style={[styles.ringsCenterValue, { color: c.foreground }]}
                   >
-                    75%
+                    {moveProgress}%
                   </Text>
                   <Text style={[styles.ringsCenterLabel, { color: c.muted }]}>
                     Daily Goal
@@ -131,7 +198,7 @@ export function FigmaHomeScreen() {
                   Move
                 </Text>
                 <Text style={[styles.legendValue, { color: c.foreground }]}>
-                  450/600
+                  {restingCalories}/{tdee}
                 </Text>
               </View>
               <View style={styles.legendItem}>
@@ -142,7 +209,7 @@ export function FigmaHomeScreen() {
                   Exercise
                 </Text>
                 <Text style={[styles.legendValue, { color: c.foreground }]}>
-                  18/30 min
+                  {exerciseMinutes}/30 min
                 </Text>
               </View>
               <View style={styles.legendItem}>
@@ -150,10 +217,10 @@ export function FigmaHomeScreen() {
                   style={[styles.legendDot, { backgroundColor: '#3b82f6' }]}
                 />
                 <Text style={[styles.legendLabel, { color: c.muted }]}>
-                  Stand
+                  BMR/day
                 </Text>
                 <Text style={[styles.legendValue, { color: c.foreground }]}>
-                  10/12 hrs
+                  {tdee} kcal
                 </Text>
               </View>
             </View>
@@ -164,34 +231,17 @@ export function FigmaHomeScreen() {
             <View style={styles.statsGrid}>
               <View style={styles.statsRow}>
                 <StatCard
-                  icon="👟"
-                  label="Steps"
-                  value="8,547"
-                  goal="10,000"
-                  color="#60a5fa"
-                />
-                <View style={styles.statsGap} />
-                <StatCard
-                  icon="🔥"
+                  icon="�"
                   label="Calories"
-                  value="450"
-                  goal="600"
+                  value={String(restingCalories)}
+                  goal={String(tdee)}
                   color="#fb923c"
-                />
-              </View>
-              <View style={[styles.statsRow, { marginTop: 16 }]}>
-                <StatCard
-                  icon="📍"
-                  label="Distance"
-                  value="6.2"
-                  unit="km"
-                  color="#4ade80"
                 />
                 <View style={styles.statsGap} />
                 <StatCard
                   icon="⏱"
                   label="Active Time"
-                  value="1h 18m"
+                  value={exerciseMinutes > 0 ? `${exerciseMinutes}m` : '--'}
                   color="#c084fc"
                 />
               </View>
@@ -211,6 +261,10 @@ export function FigmaHomeScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {showProfileModal && (
+        <ProfileModal onClose={() => setShowProfileModal(false)} />
+      )}
     </LinearGradient>
   );
 }
@@ -334,6 +388,22 @@ const styles = StyleSheet.create({
   statsGap: {
     width: 16,
   },
+  // Disclaimer banner
+  disclaimer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 24,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+  },
+  disclaimerIcon: { fontSize: 18 },
+  disclaimerBody: { flex: 1 },
+  disclaimerTitle: { fontSize: 13, fontWeight: '600' },
+  disclaimerSub: { fontSize: 12, marginTop: 2 },
+  disclaimerArrow: { fontSize: 22, fontWeight: '300' },
   activitiesList: {
     gap: 12,
   },

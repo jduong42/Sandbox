@@ -8,6 +8,7 @@ import RootStackNavigator from '../navigation/RootStackNavigator';
 import SplashScreen from '../screens/SplashScreen';
 import { theme } from '../theme';
 import { ThemeProvider } from '../theme/ThemeContext';
+import { AuthProvider } from '../context/AuthContext';
 
 const AppContainer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -46,47 +47,49 @@ const AppContainer: React.FC = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <SafeAreaProvider>
-          <PaperProvider theme={theme.paper}>
-            <StatusBar
-              barStyle="light-content"
-              backgroundColor={theme.colors.background}
-            />
-            <NavigationContainer
-              theme={{
-                dark: true,
-                colors: {
-                  primary: theme.colors.primary,
-                  background: theme.colors.background,
-                  card: theme.colors.surface,
-                  text: theme.colors.text,
-                  border: theme.colors.border,
-                  notification: theme.colors.error,
-                },
-                fonts: {
-                  regular: {
-                    fontFamily: 'System',
-                    fontWeight: 'normal',
+        <AuthProvider>
+          <SafeAreaProvider>
+            <PaperProvider theme={theme.paper}>
+              <StatusBar
+                barStyle="light-content"
+                backgroundColor={theme.colors.background}
+              />
+              <NavigationContainer
+                theme={{
+                  dark: true,
+                  colors: {
+                    primary: theme.colors.primary,
+                    background: theme.colors.background,
+                    card: theme.colors.surface,
+                    text: theme.colors.text,
+                    border: theme.colors.border,
+                    notification: theme.colors.error,
                   },
-                  medium: {
-                    fontFamily: 'System',
-                    fontWeight: '500',
+                  fonts: {
+                    regular: {
+                      fontFamily: 'System',
+                      fontWeight: 'normal',
+                    },
+                    medium: {
+                      fontFamily: 'System',
+                      fontWeight: '500',
+                    },
+                    bold: {
+                      fontFamily: 'System',
+                      fontWeight: 'bold',
+                    },
+                    heavy: {
+                      fontFamily: 'System',
+                      fontWeight: '900',
+                    },
                   },
-                  bold: {
-                    fontFamily: 'System',
-                    fontWeight: 'bold',
-                  },
-                  heavy: {
-                    fontFamily: 'System',
-                    fontWeight: '900',
-                  },
-                },
-              }}
-            >
-              <RootStackNavigator />
-            </NavigationContainer>
-          </PaperProvider>
-        </SafeAreaProvider>
+                }}
+              >
+                <RootStackNavigator />
+              </NavigationContainer>
+            </PaperProvider>
+          </SafeAreaProvider>
+        </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

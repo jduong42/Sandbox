@@ -6,8 +6,10 @@ import {
 } from '@react-navigation/stack';
 import { Easing } from 'react-native';
 import MainTabNavigator from './MainTabNavigator';
+import { FigmaProfileSettingsScreen } from '../screens/FigmaProfileSettingsScreen';
+import { RootStackParamList } from './NavigationTypes';
 
-const Stack = createStackNavigator();
+const Stack = createStackNavigator<RootStackParamList>();
 
 // Custom transition configuration for smooth animations
 const transitionConfig: StackNavigationOptions = {
@@ -67,6 +69,14 @@ const RootStackNavigator: React.FC = () => {
       }}
     >
       <Stack.Screen name="Main" component={MainTabNavigator} />
+      <Stack.Screen
+        name="ProfileSettings"
+        component={FigmaProfileSettingsScreen}
+        options={{
+          headerShown: false,
+          cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
+        }}
+      />
     </Stack.Navigator>
   );
 };

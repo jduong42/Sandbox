@@ -6,6 +6,7 @@ import { FigmaHomeScreen } from '../screens/FigmaHomeScreen';
 import { FigmaStartWorkoutScreen } from '../screens/FigmaStartWorkoutScreen';
 import { FigmaAIChatScreen } from '../screens/FigmaAIChatScreen';
 import { FigmaSettingsScreen } from '../screens/FigmaSettingsScreen';
+import { DevScreen } from '../screens/DevScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -31,6 +32,10 @@ const FIGMA_TABS = [
   },
 ] as const;
 
+const DEV_TAB = __DEV__
+  ? [{ name: 'Dev', label: 'Dev', emoji: '🛠', component: DevScreen } as const]
+  : [];
+
 export default function MainTabNavigator() {
   useEffect(() => {
     console.log(
@@ -45,7 +50,9 @@ export default function MainTabNavigator() {
       screenOptions={({ route }) => ({
         tabBarHideOnKeyboard: true,
         tabBarIcon: ({ focused }) => {
-          const tab = FIGMA_TABS.find(t => t.name === route.name);
+          const tab = [...FIGMA_TABS, ...DEV_TAB].find(
+            t => t.name === route.name,
+          );
           return (
             <Text
               style={{
@@ -98,6 +105,21 @@ export default function MainTabNavigator() {
           name={tab.name}
           component={tab.component}
           options={{ title: tab.label }}
+        />
+      ))}
+      {DEV_TAB.map(tab => (
+        <Tab.Screen
+          key={tab.name}
+          name={tab.name}
+          component={tab.component}
+          options={{
+            title: tab.label,
+            tabBarBadge: undefined,
+            tabBarItemStyle: {
+              borderTopWidth: 1,
+              borderTopColor: 'rgba(245,158,11,0.4)',
+            },
+          }}
         />
       ))}
     </Tab.Navigator>

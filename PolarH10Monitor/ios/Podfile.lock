@@ -1710,6 +1710,37 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - react-native-encrypted-storage (4.0.3):
+    - React-Core
+  - react-native-get-random-values (2.0.0):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
   - react-native-safe-area-context (5.6.1):
     - boost
     - DoubleConversion
@@ -2560,6 +2591,8 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - react-native-ble-plx (from `../node_modules/react-native-ble-plx`)
+  - react-native-encrypted-storage (from `../node_modules/react-native-encrypted-storage`)
+  - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-oscompat (from `../node_modules/react-native/ReactCommon/oscompat`)
@@ -2695,6 +2728,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
   react-native-ble-plx:
     :path: "../node_modules/react-native-ble-plx"
+  react-native-encrypted-storage:
+    :path: "../node_modules/react-native-encrypted-storage"
+  react-native-get-random-values:
+    :path: "../node_modules/react-native-get-random-values"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   React-NativeModulesApple:
@@ -2821,6 +2858,8 @@ SPEC CHECKSUMS:
   React-Mapbuffer: f5754c33877eaf36e4c76c613b35615a181c85c5
   React-microtasksnativemodule: 23df6374a3ac422d8c2927839bcaeed61fee3dad
   react-native-ble-plx: ce6e9f26a6543199e3f0c70afa3964c3a53f4a0b
+  react-native-encrypted-storage: 569d114e329b1c2c2d9f8c84bcdbe4478dda2258
+  react-native-get-random-values: 56902f93ede23be52e313e8f7916c1a35b639d95
   react-native-safe-area-context: 8ed800930eb7d0b6651218f69656e823d37b6ef7
   React-NativeModulesApple: e16d5c133019987285f001fbf1461a861e40426f
   React-oscompat: 7c0a341cc31e350da71ddf2e46de0a845d1d1626
