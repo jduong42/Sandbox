@@ -16,7 +16,8 @@ import { ChatMessage, Message } from '../components/figma/ChatMessage';
 import { ModelBadge } from '../components/figma/ModelBadge';
 import { AIInfoModal } from '../components/figma/AIInfoModal';
 import { llamaTextGenerationService } from '../services/LlamaTextGenerationService';
-import { createSportsPrompt } from '../prompts/sportsPrompts';
+import { createSportsPromptWithContext } from '../prompts/sportsPrompts';
+import { trainingContextService } from '../services/TrainingContextService';
 import { useTheme } from '../theme/ThemeContext';
 
 const MODEL_DISPLAY_NAME = 'Llama 3.2 3B - Sports Science';
@@ -103,7 +104,9 @@ export function FigmaAIChatScreen() {
     scrollToBottom();
 
     try {
-      const prompt = createSportsPrompt(text);
+      // Build personalised context (TRIMP, ACWR, physiology) — fast, local only
+      const { contextBlock } = await trainingContextService.buildContext();
+      const prompt = createSportsPromptWithContext(text, contextBlock);
       let accumulated = '';
 
       const result = await llamaTextGenerationService.generateTextStreaming(

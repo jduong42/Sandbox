@@ -23,6 +23,11 @@ import { figmaTheme as t } from '../theme/figmaTheme';
 import { useAuthStore } from '../store/authStore';
 import { useShallow } from 'zustand/react/shallow';
 import { secureRemove } from '../utils/secureStorage';
+import { DummyDataGenerator } from '../services/DummyDataGenerator';
+import { AnalyticsService } from '../services/AnalyticsService';
+import { SEEDED_SESSIONS_KEY } from '../services/TrainingContextService';
+import { trainingContextService } from '../services/TrainingContextService';
+import { usePhysiologyStore } from '../store/physiologyStore';
 
 const STORAGE_KEY = 'app-user';
 const FALLBACK_PREFIX = 'secure_fallback_';
@@ -88,6 +93,65 @@ export function DevScreen() {
   const [asyncKeys, setAsyncKeys] = useState<StorageEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [lastContextDebug, setLastContextDebug] = useState<string | null>(null);
+
+  // ── seed 4 weeks of synthetic training data ─────────────────────────────
+  const handleSeedData = async () => {
+    setSeeding(true);
+    try {
+      const physiology = usePhysiologyStore.getState().settings;
+      const generator = new DummyDataGenerator({
+        age: physiology?.ageYears ?? 30,
+        weight: physiology?.weightKg ?? 75,
+        restingHeartRate: 60,
+        maxHeartRate: 220 - (physiology?.ageYears ?? 30),
+      });
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - 28);
+      const sessions = generator.generateSessions(start, end, 4);
+      const enriched = AnalyticsService.enrichSessionsWithTRIMP(sessions, {
+        id: 'seed',
+        age: physiology?.ageYears ?? 30,
+        weight: physiology?.weightKg ?? 75,
+        restingHeartRate: 60,
+        maxHeartRate: 220 - (physiology?.ageYears ?? 30),
+      });
+      await AsyncStorage.setItem(SEEDED_SESSIONS_KEY, JSON.stringify(enriched));
+      await refreshKeys();
+      Alert.alert(
+        '✅ Seeded',
+        `${enriched.length} sessions generated for the last 28 days.`,
+      );
+    } catch (e) {
+      Alert.alert('Error', String(e));
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleClearSeededData = async () => {
+    await AsyncStorage.removeItem(SEEDED_SESSIONS_KEY);
+    setLastContextDebug(null);
+    await refreshKeys();
+  };
+
+  const handleInspectContext = async () => {
+    try {
+      const { contextBlock, debug } =
+        await trainingContextService.buildContext();
+      setLastContextDebug(
+        `Sessions: ${debug.sessionCount} | ACWR: ${debug.acwr ?? 'n/a'} (${
+          debug.acwrRisk
+        })\n` +
+          `Acute: ${debug.acuteLoad} | Chronic: ${debug.chronicLoad}\n\n` +
+          contextBlock,
+      );
+    } catch (e) {
+      setLastContextDebug(`Error: ${String(e)}`);
+    }
+  };
 
   // ── load all AsyncStorage keys ────────────────────────────────────────────
   const refreshKeys = useCallback(async () => {
@@ -264,6 +328,30 @@ export function DevScreen() {
             onPress={handleWipeAsyncStorage}
             danger
           />
+        </Section>
+
+        {/* ── training data seed ── */}
+        <Section title="Training Data (AI Context)">
+          <ActionButton
+            label={seeding ? 'Generating…' : '🏃  Seed 4 Weeks of Sessions'}
+            onPress={handleSeedData}
+            loading={seeding}
+          />
+          <ActionButton
+            label="🔍  Inspect AI Context Block"
+            onPress={handleInspectContext}
+          />
+          <ActionButton
+            label="🗑  Clear Seeded Sessions"
+            onPress={handleClearSeededData}
+            danger
+          />
+          {lastContextDebug && (
+            <View style={styles.keyRow}>
+              <Text style={styles.keyName}>Context preview</Text>
+              <Text style={styles.keyValue}>{lastContextDebug}</Text>
+            </View>
+          )}
         </Section>
 
         {/* ── async storage inspector ── */}

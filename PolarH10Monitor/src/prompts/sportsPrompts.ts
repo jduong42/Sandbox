@@ -76,6 +76,32 @@ ${userPrompt}
 }
 
 /**
+ * Creates a prompt enriched with the athlete's personal training context block.
+ *
+ * The contextBlock (from TrainingContextService.buildContext()) is injected
+ * between the system prompt and the user's question so the model has full
+ * awareness of ACWR, TRIMP history, and physiology before answering.
+ *
+ * @param userPrompt   - The user's raw question
+ * @param contextBlock - Plain-text block from TrainingContextService
+ */
+export function createSportsPromptWithContext(
+  userPrompt: string,
+  contextBlock: string,
+): string {
+  return `<|im_start|>system
+${SPORTS_SCIENCE_SYSTEM_PROMPT}
+<|im_end|>
+<|im_start|>user
+${contextBlock}
+
+Question: ${userPrompt}
+<|im_end|>
+<|im_start|>assistant
+{"answer": "`;
+}
+
+/**
  * Prompt template configurations
  */
 export const PROMPT_CONFIG = {

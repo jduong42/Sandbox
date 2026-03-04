@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,65 +16,53 @@ import {
 } from '../components/figma/TrainingSessionCard';
 import { StartSessionModal } from '../components/figma/StartSessionModal';
 import { useTheme } from '../theme/ThemeContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import { SEEDED_SESSIONS_KEY } from '../services/TrainingContextService';
+import type { TrainingSession as StoredSession } from '../types/training';
 
-const ALL_SESSIONS: TrainingSession[] = [
-  {
-    id: 1,
-    name: 'Morning Yoga',
-    date: 'Today, 7:30 AM',
-    duration: '45 min',
-    calories: 180,
-    heartRate: 95,
-  },
-  {
-    id: 2,
-    name: 'Pilates',
-    date: 'Yesterday, 6:00 PM',
-    duration: '50 min',
-    calories: 220,
-    heartRate: 105,
-  },
-  {
-    id: 3,
-    name: 'HIIT Training',
-    date: 'Mar 1, 8:00 AM',
-    duration: '30 min',
-    calories: 285,
-    heartRate: 145,
-  },
-  {
-    id: 4,
-    name: 'Yoga Flow',
-    date: 'Feb 28, 7:00 AM',
-    duration: '40 min',
-    calories: 165,
-    heartRate: 90,
-  },
-  {
-    id: 5,
-    name: 'Strength Training',
-    date: 'Feb 27, 6:30 PM',
-    duration: '55 min',
-    calories: 310,
-    heartRate: 120,
-  },
-  {
-    id: 6,
-    name: 'Meditation',
-    date: 'Feb 27, 9:00 AM',
-    duration: '20 min',
-    calories: 45,
-    heartRate: 70,
-  },
-  {
-    id: 7,
-    name: 'Core Workout',
-    date: 'Feb 26, 7:15 AM',
-    duration: '35 min',
-    calories: 195,
-    heartRate: 110,
-  },
-];
+const SESSIONS_HISTORY_KEY = 'sessions_history';
+
+function formatType(type: string): string {
+  return (type ?? 'Session')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, ch => ch.toUpperCase());
+}
+
+function formatRelativeDate(d: Date): string {
+  const now = new Date();
+  const diffDays = Math.floor(
+    (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  const time = d.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  if (diffDays === 0) {
+    return `Today, ${time}`;
+  }
+  if (diffDays === 1) {
+    return `Yesterday, ${time}`;
+  }
+  return (
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+    `, ${time}`
+  );
+}
+
+function toCardSession(s: StoredSession): TrainingSession {
+  const d = new Date((s as any).startTime ?? (s as any).date ?? Date.now());
+  const mins = Math.round(((s as any).duration ?? 0) / 60);
+  return {
+    id: (s as any).id,
+    name: (s as any).title ?? formatType((s as any).type ?? ''),
+    date: formatRelativeDate(d),
+    duration: `${mins} min`,
+    calories: Math.round((s as any).calories ?? 0),
+    heartRate: Math.round((s as any).averageHeartRate ?? 0),
+    trimpScore: (s as any).trimpScore,
+  };
+}
 
 export function FigmaStartWorkoutScreen() {
   const { c } = useTheme();
@@ -84,11 +72,53 @@ export function FigmaStartWorkoutScreen() {
   const [showModal, setShowModal] = useState(false);
   const [showAllSessions, setShowAllSessions] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [sessions, setSessions] = useState<TrainingSession[]>([]);
 
-  const visibleSessions = showAllSessions
-    ? ALL_SESSIONS
-    : ALL_SESSIONS.slice(0, 3);
-  const hasMoreSessions = ALL_SESSIONS.length > 3;
+  const loadSessions = useCallback(async () => {
+    try {
+      const [realRaw, seedRaw] = await Promise.all([
+        AsyncStorage.getItem(SESSIONS_HISTORY_KEY),
+        AsyncStorage.getItem(SEEDED_SESSIONS_KEY),
+      ]);
+      const real: StoredSession[] = realRaw ? JSON.parse(realRaw) : [];
+      const seeded: StoredSession[] = seedRaw ? JSON.parse(seedRaw) : [];
+
+      // merge, deduplicate by id, newest first
+      const seen = new Set<string>();
+      const merged = [...real, ...seeded]
+        .filter(s => {
+          const key = String((s as any).id);
+          if (seen.has(key)) {
+            return false;
+          }
+          seen.add(key);
+          return true;
+        })
+        .sort((a, b) => {
+          const da = new Date(
+            (a as any).startTime ?? (a as any).date ?? 0,
+          ).getTime();
+          const db = new Date(
+            (b as any).startTime ?? (b as any).date ?? 0,
+          ).getTime();
+          return db - da;
+        });
+
+      setSessions(merged.map(toCardSession));
+    } catch (e) {
+      console.warn('[WorkoutScreen] failed to load sessions', e);
+    }
+  }, []);
+
+  // useFocusEffect requires a sync callback — call the async fn without returning its Promise
+  useFocusEffect(
+    useCallback(() => {
+      loadSessions();
+    }, [loadSessions]),
+  );
+
+  const visibleSessions = showAllSessions ? sessions : sessions.slice(0, 3);
+  const hasMoreSessions = sessions.length > 3;
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -145,14 +175,23 @@ export function FigmaStartWorkoutScreen() {
                 Recent Sessions
               </Text>
               <Text style={[styles.sessionsCount, { color: c.muted }]}>
-                {ALL_SESSIONS.length} total
+                {sessions.length} total
               </Text>
             </View>
 
             <View style={styles.sessionsList}>
-              {visibleSessions.map(session => (
-                <TrainingSessionCard key={session.id} session={session} />
-              ))}
+              {sessions.length === 0 ? (
+                <View style={[styles.emptyState, { borderColor: c.border }]}>
+                  <Text style={[styles.emptyStateText, { color: c.muted }]}>
+                    No sessions yet — record a workout or seed data in Dev
+                    settings.
+                  </Text>
+                </View>
+              ) : (
+                visibleSessions.map(session => (
+                  <TrainingSessionCard key={session.id} session={session} />
+                ))
+              )}
             </View>
 
             {hasMoreSessions && (
@@ -167,7 +206,7 @@ export function FigmaStartWorkoutScreen() {
                 <Text style={[styles.showMoreText, { color: c.foreground }]}>
                   {showAllSessions
                     ? 'Show Less'
-                    : `Show ${ALL_SESSIONS.length - 3} More Sessions`}
+                    : `Show ${sessions.length - 3} More Sessions`}
                 </Text>
                 <Text style={[styles.chevron, { color: c.muted }]}>
                   {showAllSessions ? '▲' : '▼'}
@@ -267,5 +306,17 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 12,
     color: '#e2e8f0',
+  },
+  emptyState: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
