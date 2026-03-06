@@ -8,7 +8,7 @@ import {
   ACWRRisk,
 } from '../../utils/ACWRCalculator';
 import { TrainingLoadModal } from './TrainingLoadModal';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureRead } from '../../utils/secureStorage';
 import { SEEDED_SESSIONS_KEY } from '../../services/TrainingContextService';
 import { AnalyticsService } from '../../services/AnalyticsService';
 import { usePhysiologyStore } from '../../store/physiologyStore';
@@ -44,12 +44,10 @@ export function TrainingLoadCard() {
     let active = true;
     async function load() {
       try {
-        const [realRaw, seedRaw] = await Promise.all([
-          AsyncStorage.getItem(SESSIONS_HISTORY_KEY),
-          AsyncStorage.getItem(SEEDED_SESSIONS_KEY),
+        const [real, seeded] = await Promise.all([
+          secureRead<TrainingSession[]>(SESSIONS_HISTORY_KEY).then(v => v ?? []),
+          secureRead<TrainingSession[]>(SEEDED_SESSIONS_KEY).then(v => v ?? []),
         ]);
-        const real: TrainingSession[] = realRaw ? JSON.parse(realRaw) : [];
-        const seeded: TrainingSession[] = seedRaw ? JSON.parse(seedRaw) : [];
 
         // Merge and deduplicate by id
         const seen = new Set<string>();

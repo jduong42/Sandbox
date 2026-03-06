@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureRead, secureWrite, secureRemove } from '../utils/secureStorage';
 import { logger } from '../utils/logger';
 
 export interface StoredDevice {
@@ -52,12 +52,9 @@ class DeviceHistoryService {
       // But we'll still have a reasonable max to prevent storage issues
       const trimmedDevices = devices.slice(0, DeviceHistoryService.MAX_DEVICES);
 
-      await AsyncStorage.setItem(
-        DeviceHistoryService.STORAGE_KEY,
-        JSON.stringify(trimmedDevices),
-      );
+      await secureWrite(DeviceHistoryService.STORAGE_KEY, trimmedDevices);
 
-      logger.info('DeviceHistoryService: Successfully saved to AsyncStorage', {
+      logger.info('DeviceHistoryService: Successfully saved to storage', {
         deviceCount: trimmedDevices.length,
         storageKey: DeviceHistoryService.STORAGE_KEY,
       });
@@ -75,15 +72,11 @@ class DeviceHistoryService {
    */
   async getDevices(): Promise<StoredDevice[]> {
     try {
-      const storedData = await AsyncStorage.getItem(
-        DeviceHistoryService.STORAGE_KEY,
-      );
-      if (!storedData) {
+      const devices = await secureRead<StoredDevice[]>(DeviceHistoryService.STORAGE_KEY) ?? [];
+      if (devices.length === 0) {
         logger.info('DeviceHistoryService: No stored data found');
         return [];
       }
-
-      const devices: StoredDevice[] = JSON.parse(storedData);
       
       logger.info('DeviceHistoryService: Retrieved devices from storage', {
         deviceCount: devices.length,
@@ -110,10 +103,7 @@ class DeviceHistoryService {
       const devices = await this.getDevices();
       const filteredDevices = devices.filter(d => d.id !== deviceId);
 
-      await AsyncStorage.setItem(
-        DeviceHistoryService.STORAGE_KEY,
-        JSON.stringify(filteredDevices),
-      );
+      await secureWrite(DeviceHistoryService.STORAGE_KEY, filteredDevices);
 
       logger.info('Removed device from history', { deviceId });
     } catch (error) {
@@ -127,7 +117,7 @@ class DeviceHistoryService {
    */
   async clearHistory(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(DeviceHistoryService.STORAGE_KEY);
+      await secureRemove(DeviceHistoryService.STORAGE_KEY);
       logger.info('Cleared all device history');
     } catch (error) {
       logger.error('Failed to clear device history', { error });

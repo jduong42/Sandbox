@@ -16,7 +16,7 @@ import {
 } from '../components/figma/TrainingSessionCard';
 import { StartSessionModal } from '../components/figma/StartSessionModal';
 import { useTheme } from '../theme/ThemeContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureRead } from '../utils/secureStorage';
 import { useFocusEffect } from '@react-navigation/native';
 import { SEEDED_SESSIONS_KEY } from '../services/TrainingContextService';
 import type { TrainingSession as StoredSession } from '../types/training';
@@ -76,12 +76,10 @@ export function FigmaStartWorkoutScreen() {
 
   const loadSessions = useCallback(async () => {
     try {
-      const [realRaw, seedRaw] = await Promise.all([
-        AsyncStorage.getItem(SESSIONS_HISTORY_KEY),
-        AsyncStorage.getItem(SEEDED_SESSIONS_KEY),
+      const [real, seeded] = await Promise.all([
+        secureRead<StoredSession[]>(SESSIONS_HISTORY_KEY).then(v => v ?? []),
+        secureRead<StoredSession[]>(SEEDED_SESSIONS_KEY).then(v => v ?? []),
       ]);
-      const real: StoredSession[] = realRaw ? JSON.parse(realRaw) : [];
-      const seeded: StoredSession[] = seedRaw ? JSON.parse(seedRaw) : [];
 
       // merge, deduplicate by id, newest first
       const seen = new Set<string>();

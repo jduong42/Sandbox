@@ -13,7 +13,7 @@
  * Nothing here reaches the internet — all data stays on-device.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureRead } from '../utils/secureStorage';
 import { usePhysiologyStore } from '../store/physiologyStore';
 import { useAuthStore } from '../store/authStore';
 import { AnalyticsService } from './AnalyticsService';
@@ -118,17 +118,10 @@ class TrainingContextService {
   private async loadSessions(): Promise<TrainingSession[]> {
     try {
       // Try both the seeded key (DevScreen) and the real recording service key
-      const [seeded, real] = await Promise.all([
-        AsyncStorage.getItem(SEEDED_SESSIONS_KEY),
-        AsyncStorage.getItem(SESSIONS_HISTORY_KEY),
+      const [seededSessions, realSessions] = await Promise.all([
+        secureRead<TrainingSession[]>(SEEDED_SESSIONS_KEY).then(v => v ?? []),
+        secureRead<TrainingSession[]>(SESSIONS_HISTORY_KEY).then(v => v ?? []),
       ]);
-
-      const seededSessions: TrainingSession[] = seeded
-        ? (JSON.parse(seeded) as TrainingSession[])
-        : [];
-      const realSessions: TrainingSession[] = real
-        ? (JSON.parse(real) as TrainingSession[])
-        : [];
 
       // Merge, deduplicate by id, sort oldest→newest
       const all = [...seededSessions, ...realSessions];

@@ -18,11 +18,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureWrite, secureRemove, SECURE_STORAGE_KEYS } from '../utils/secureStorage';
 import EncryptedStorage from 'react-native-encrypted-storage';
 import { figmaTheme as t } from '../theme/figmaTheme';
 import { useAuthStore } from '../store/authStore';
 import { useShallow } from 'zustand/react/shallow';
-import { secureRemove } from '../utils/secureStorage';
 import { DummyDataGenerator } from '../services/DummyDataGenerator';
 import { AnalyticsService } from '../services/AnalyticsService';
 import { SEEDED_SESSIONS_KEY } from '../services/TrainingContextService';
@@ -123,7 +123,7 @@ export function DevScreen() {
         maxHeartRate,
         sex: physiology?.sex,
       });
-      await AsyncStorage.setItem(SEEDED_SESSIONS_KEY, JSON.stringify(enriched));
+      await secureWrite(SEEDED_SESSIONS_KEY, enriched);
       await refreshKeys();
       Alert.alert(
         '✅ Seeded',
@@ -137,7 +137,7 @@ export function DevScreen() {
   };
 
   const handleClearSeededData = async () => {
-    await AsyncStorage.removeItem(SEEDED_SESSIONS_KEY);
+    await secureRemove(SEEDED_SESSIONS_KEY);
     setLastContextDebug(null);
     await refreshKeys();
   };
@@ -216,8 +216,10 @@ export function DevScreen() {
           style: 'destructive',
           onPress: async () => {
             setBusy(true);
-            try {
-              await AsyncStorage.clear();
+            try {              // Also wipe encrypted session/device keys
+              await Promise.allSettled(
+                SECURE_STORAGE_KEYS.map(k => secureRemove(k)),
+              );              await AsyncStorage.clear();
               await refreshKeys();
             } finally {
               setBusy(false);

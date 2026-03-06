@@ -91,3 +91,14 @@ export async function secureRemove(key: string): Promise<void> {
     AsyncStorage.removeItem(FALLBACK_PREFIX + key),
   ]);
 }
+
+/**
+ * All keys managed by SecureStorage.
+ * Used by DevScreen to wipe encrypted data alongside AsyncStorage.
+ */
+export const SECURE_STORAGE_KEYS = [
+  'sessions_history',
+  'seeded_training_sessions',
+  'active_recording_session',
+  '@device_history',
+] as const;

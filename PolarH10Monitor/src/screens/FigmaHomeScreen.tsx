@@ -8,7 +8,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureRead } from '../utils/secureStorage';
 import { ActivityRing } from '../components/figma/ActivityRing';
 import { StatCard } from '../components/figma/StatCard';
 import { RecentActivity } from '../components/figma/RecentActivity';
@@ -111,12 +111,10 @@ export function FigmaHomeScreen() {
 
   const loadRecentActivities = useCallback(async () => {
     try {
-      const [realRaw, seedRaw] = await Promise.all([
-        AsyncStorage.getItem(SESSIONS_HISTORY_KEY),
-        AsyncStorage.getItem(SEEDED_SESSIONS_KEY),
+      const [real, seeded] = await Promise.all([
+        secureRead<TrainingSession[]>(SESSIONS_HISTORY_KEY).then(v => v ?? []),
+        secureRead<TrainingSession[]>(SEEDED_SESSIONS_KEY).then(v => v ?? []),
       ]);
-      const real: TrainingSession[] = realRaw ? JSON.parse(realRaw) : [];
-      const seeded: TrainingSession[] = seedRaw ? JSON.parse(seedRaw) : [];
 
       // Merge, deduplicate by id, sort by date desc
       const seen = new Set<string>();
