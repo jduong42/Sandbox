@@ -110,7 +110,9 @@ class SessionRecordingService {
    */
   async getActiveSession(): Promise<RecordingSession | null> {
     try {
-      const session = await secureRead<RecordingSession>(this.ACTIVE_SESSION_KEY);
+      const session = await secureRead<RecordingSession>(
+        this.ACTIVE_SESSION_KEY,
+      );
       if (!session) return null;
 
       // Convert date strings back to Date objects
@@ -131,7 +133,8 @@ class SessionRecordingService {
    */
   async getSessionHistory(): Promise<RecordingSession[]> {
     try {
-      const sessions = await secureRead<RecordingSession[]>(this.SESSIONS_HISTORY_KEY) ?? [];
+      const sessions =
+        (await secureRead<RecordingSession[]>(this.SESSIONS_HISTORY_KEY)) ?? [];
       // Convert date strings back to Date objects
       return sessions.map((session: RecordingSession) => ({
         ...session,

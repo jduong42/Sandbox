@@ -18,7 +18,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { secureWrite, secureRemove, SECURE_STORAGE_KEYS } from '../utils/secureStorage';
+import {
+  secureWrite,
+  secureRemove,
+  SECURE_STORAGE_KEYS,
+} from '../utils/secureStorage';
 import EncryptedStorage from 'react-native-encrypted-storage';
 import { figmaTheme as t } from '../theme/figmaTheme';
 import { useAuthStore } from '../store/authStore';
@@ -216,10 +220,12 @@ export function DevScreen() {
           style: 'destructive',
           onPress: async () => {
             setBusy(true);
-            try {              // Also wipe encrypted session/device keys
+            try {
+              // Also wipe encrypted session/device keys
               await Promise.allSettled(
                 SECURE_STORAGE_KEYS.map(k => secureRemove(k)),
-              );              await AsyncStorage.clear();
+              );
+              await AsyncStorage.clear();
               await refreshKeys();
             } finally {
               setBusy(false);

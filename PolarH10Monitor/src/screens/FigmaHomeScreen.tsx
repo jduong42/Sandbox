@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -13,6 +14,8 @@ import { ActivityRing } from '../components/figma/ActivityRing';
 import { StatCard } from '../components/figma/StatCard';
 import { RecentActivity } from '../components/figma/RecentActivity';
 import { TrainingLoadCard } from '../components/figma/TrainingLoadCard';
+import { CoachBanner } from '../components/figma/CoachBanner';
+import { StreakCard } from '../components/figma/StreakCard';
 import { useTheme } from '../theme/ThemeContext';
 import { getRestingCaloriesToday, getTDEE } from '../utils/CalorieCalculator';
 import { ProfileModal } from '../components/figma/ProfileModal';
@@ -24,6 +27,8 @@ import {
 } from '../store/physiologyStore';
 import type { TrainingSession } from '../types/training';
 import { SEEDED_SESSIONS_KEY } from '../services/TrainingContextService';
+import { calculateStreak } from '../utils/StreakCalculator';
+import type { StreakData } from '../utils/StreakCalculator';
 
 const SESSIONS_HISTORY_KEY = 'sessions_history';
 
@@ -96,18 +101,18 @@ export function FigmaHomeScreen() {
   const { user } = useAuth();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const { settings, isLoaded, initialize } = usePhysiologyStore();
-  const [recentActivities, setRecentActivities] =
-    useState<
-      {
-        id: string;
-        name: string;
-        time: string;
-        duration: string;
-        calories: number;
-        icon: string;
-        color: string;
-      }[]
-    >(DUMMY_ACTIVITIES);
+  const [recentActivities, setRecentActivities] = useState<
+    {
+      id: string;
+      name: string;
+      time: string;
+      duration: string;
+      calories: number;
+      icon: string;
+      color: string;
+    }[]
+  >(DUMMY_ACTIVITIES);
+  const [streakData, setStreakData] = useState<StreakData | null>(null);
 
   const loadRecentActivities = useCallback(async () => {
     try {
@@ -154,6 +159,9 @@ export function FigmaHomeScreen() {
           }),
         );
       }
+
+      // Streak data from all merged sessions
+      setStreakData(calculateStreak(all as unknown as TrainingSession[]));
     } catch (e) {
       console.warn('[FigmaHomeScreen] failed to load sessions', e);
     }
@@ -161,9 +169,15 @@ export function FigmaHomeScreen() {
 
   useEffect(() => {
     if (!isLoaded) initialize();
-    loadRecentActivities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reload sessions every time this tab comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadRecentActivities();
+    }, [loadRecentActivities]),
+  );
 
   const userProfile = useMemo(() => toUserProfile(settings), [settings]);
   const profileComplete = isPhysiologyComplete(settings);
@@ -221,6 +235,11 @@ export function FigmaHomeScreen() {
 
           <Text style={[styles.date, { color: c.muted }]}>{today}</Text>
 
+          {/* Coach Banner */}
+          <View style={[styles.section, { marginTop: 8 }]}>
+            <Text style={[styles.sectionTitle, { color: c.foreground, marginBottom: 10 }]}>Today's Coaching</Text>
+            <CoachBanner />
+          </View>
           {/* Calorie disclaimer — visible when physiology profile is incomplete */}
           {!profileComplete && (
             <TouchableOpacity
@@ -350,6 +369,16 @@ export function FigmaHomeScreen() {
               </View>
             </View>
           </View>
+
+          {/* Streak & Milestones */}
+          {streakData && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: c.foreground }]}>
+                Consistency
+              </Text>
+              <StreakCard data={streakData} />
+            </View>
+          )}
 
           {/* Training Load */}
           <View style={styles.section}>
