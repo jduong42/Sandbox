@@ -238,19 +238,14 @@ class TrainingContextService {
 
       // Pre-compute derived values so the model never has to guess them
       const age = p.ageYears ?? 30;
-      const maxHR =
-        p.maxHeartRate != null ? p.maxHeartRate : 220 - age;
+      const maxHR = p.maxHeartRate != null ? p.maxHeartRate : 220 - age;
       const restHR = p.restingHeartRate ?? 60;
       const hrReserve = maxHR - restHR;
       const maxHRSource =
         p.maxHeartRate != null ? 'measured' : '220 − age estimate';
 
-      lines.push(
-        `Max HR: ${maxHR} bpm (${maxHRSource})`,
-      );
-      lines.push(
-        `Resting HR: ${restHR} bpm  // HR reserve = ${hrReserve} bpm`,
-      );
+      lines.push(`Max HR: ${maxHR} bpm (${maxHRSource})`);
+      lines.push(`Resting HR: ${restHR} bpm  // HR reserve = ${hrReserve} bpm`);
 
       // Karvonen zone boundaries — match the app's actual zone calculation
       const z1top = Math.round(restHR + hrReserve * 0.6);
@@ -259,9 +254,15 @@ class TrainingContextService {
       const z4top = Math.round(restHR + hrReserve * 0.9);
       lines.push(`HR zones (Karvonen method, HR reserve = ${hrReserve} bpm):`);
       lines.push(`  Zone 1 (Active Recovery):        ≤${z1top} bpm`);
-      lines.push(`  Zone 2 (Aerobic Base / fat burn): ${z1top + 1}–${z2top} bpm`);
-      lines.push(`  Zone 3 (Aerobic Threshold):       ${z2top + 1}–${z3top} bpm`);
-      lines.push(`  Zone 4 (Lactate Threshold):       ${z3top + 1}–${z4top} bpm`);
+      lines.push(
+        `  Zone 2 (Aerobic Base / fat burn): ${z1top + 1}–${z2top} bpm`,
+      );
+      lines.push(
+        `  Zone 3 (Aerobic Threshold):       ${z2top + 1}–${z3top} bpm`,
+      );
+      lines.push(
+        `  Zone 4 (Lactate Threshold):       ${z3top + 1}–${z4top} bpm`,
+      );
       lines.push(`  Zone 5 (VO2 Max / Max Effort):    >${z4top} bpm`);
     } else {
       lines.push('Physiology: not set (user has not completed profile)');

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   SafeAreaView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityRing } from '../components/figma/ActivityRing';
 import { StatCard } from '../components/figma/StatCard';
 import { RecentActivity } from '../components/figma/RecentActivity';
+import { TrainingLoadCard } from '../components/figma/TrainingLoadCard';
 import { useTheme } from '../theme/ThemeContext';
 import { getRestingCaloriesToday, getTDEE } from '../utils/CalorieCalculator';
 import { ProfileModal } from '../components/figma/ProfileModal';
@@ -20,10 +22,48 @@ import {
   isPhysiologyComplete,
   toUserProfile,
 } from '../store/physiologyStore';
+import type { TrainingSession } from '../types/training';
+import { SEEDED_SESSIONS_KEY } from '../services/TrainingContextService';
 
-const ACTIVITIES = [
+const SESSIONS_HISTORY_KEY = 'sessions_history';
+
+// Icon + colour by TrainingType string
+function activityMeta(type: string): { icon: string; color: string } {
+  switch (type) {
+    case 'running':
+      return { icon: '🏃', color: '#3b82f6' };
+    case 'cycling':
+      return { icon: '🚴', color: '#22c55e' };
+    case 'hiit':
+      return { icon: '❤️', color: '#ef4444' };
+    case 'swimming':
+      return { icon: '🏊', color: '#06b6d4' };
+    case 'strength':
+      return { icon: '🏋️', color: '#a855f7' };
+    case 'yoga':
+      return { icon: '🧘', color: '#14b8a6' };
+    default:
+      return { icon: '🏃', color: '#6366f1' };
+  }
+}
+
+function formatSessionTime(date: Date | string | undefined): string {
+  if (!date) return '';
+  const d = new Date(date as string);
+  const now = new Date();
+  const diffDays = Math.floor(
+    (now.setHours(0, 0, 0, 0) - new Date(d).setHours(0, 0, 0, 0)) / 86_400_000,
+  );
+  if (diffDays === 0)
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (diffDays === 1) return 'Yesterday';
+  return `${diffDays} days ago`;
+}
+
+// Dummy fallback shown when no real sessions exist
+const DUMMY_ACTIVITIES = [
   {
-    id: 1,
+    id: 'dummy-1',
     name: 'Morning Run',
     time: '7:30 AM',
     duration: '32 min',
@@ -32,7 +72,7 @@ const ACTIVITIES = [
     color: '#3b82f6',
   },
   {
-    id: 2,
+    id: 'dummy-2',
     name: 'Evening Ride',
     time: 'Yesterday',
     duration: '45 min',
@@ -41,7 +81,7 @@ const ACTIVITIES = [
     color: '#22c55e',
   },
   {
-    id: 3,
+    id: 'dummy-3',
     name: 'HIIT Training',
     time: '2 days ago',
     duration: '28 min',
@@ -56,9 +96,74 @@ export function FigmaHomeScreen() {
   const { user } = useAuth();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const { settings, isLoaded, initialize } = usePhysiologyStore();
+  const [recentActivities, setRecentActivities] =
+    useState<
+      {
+        id: string;
+        name: string;
+        time: string;
+        duration: string;
+        calories: number;
+        icon: string;
+        color: string;
+      }[]
+    >(DUMMY_ACTIVITIES);
+
+  const loadRecentActivities = useCallback(async () => {
+    try {
+      const [realRaw, seedRaw] = await Promise.all([
+        AsyncStorage.getItem(SESSIONS_HISTORY_KEY),
+        AsyncStorage.getItem(SEEDED_SESSIONS_KEY),
+      ]);
+      const real: TrainingSession[] = realRaw ? JSON.parse(realRaw) : [];
+      const seeded: TrainingSession[] = seedRaw ? JSON.parse(seedRaw) : [];
+
+      // Merge, deduplicate by id, sort by date desc
+      const seen = new Set<string>();
+      const all = [...real, ...seeded]
+        .filter(s => {
+          const key = String((s as any).id);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .sort((a, b) => {
+          const da = new Date(
+            (a as any).date ?? (a as any).startTime ?? 0,
+          ).getTime();
+          const db = new Date(
+            (b as any).date ?? (b as any).startTime ?? 0,
+          ).getTime();
+          return db - da;
+        })
+        .slice(0, 5);
+
+      if (all.length > 0) {
+        setRecentActivities(
+          all.map(s => {
+            const meta = activityMeta(String((s as any).type ?? ''));
+            const durationSec: number = (s as any).duration ?? 0;
+            const durationMin = Math.round(durationSec / 60);
+            return {
+              id: String((s as any).id),
+              name: (s as any).title ?? (s as any).type ?? 'Session',
+              time: formatSessionTime((s as any).date ?? (s as any).startTime),
+              duration: durationMin > 0 ? `${durationMin} min` : '--',
+              calories: Math.round((s as any).calories ?? 0),
+              icon: meta.icon,
+              color: meta.color,
+            };
+          }),
+        );
+      }
+    } catch (e) {
+      console.warn('[FigmaHomeScreen] failed to load sessions', e);
+    }
+  }, []);
 
   useEffect(() => {
     if (!isLoaded) initialize();
+    loadRecentActivities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -248,13 +353,21 @@ export function FigmaHomeScreen() {
             </View>
           </View>
 
+          {/* Training Load */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: c.foreground }]}>
+              Training Load
+            </Text>
+            <TrainingLoadCard />
+          </View>
+
           {/* Recent Activities */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: c.foreground }]}>
               Recent Activities
             </Text>
             <View style={styles.activitiesList}>
-              {ACTIVITIES.map(activity => (
+              {recentActivities.map(activity => (
                 <RecentActivity key={activity.id} {...activity} />
               ))}
             </View>

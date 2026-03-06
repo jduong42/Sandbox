@@ -45,6 +45,16 @@ export interface ACWRResult {
   interpretation: string;
   /** Days of data used */
   daysOfData: number;
+  /**
+   * Monotony (Foster 2001) — mean 7-day load ÷ std dev of 7-day loads.
+   * Low (<1): highly varied training. High (>2): same stimulus every day.
+   */
+  monotony: number;
+  /**
+   * Training Strain — acute load × monotony.
+   * Combined weekly stress score; high strain + high ACWR = overreach risk.
+   */
+  strain: number;
 }
 
 /**
@@ -85,7 +95,22 @@ export function calculateACWR(
   }
   const chronicLoad = Math.round((chronicSum / 4) * 10) / 10;
 
-  // Need at least 7 days to compute a meaningful ACWR
+  // Monotony: mean / std-dev of 7 individual daily loads (Foster 2001)
+  const daily7 = Array.from({ length: 7 }, (_, d) => trimpByOffset.get(d) ?? 0);
+  const mean7 = daily7.reduce((s, v) => s + v, 0) / 7;
+  const variance7 = daily7.reduce((s, v) => s + Math.pow(v - mean7, 2), 0) / 7;
+  const stddev7 = Math.sqrt(variance7);
+  // If stddev ≈ 0 but mean > 0: training is perfectly monotonous (cap at 10)
+  // If both are 0: no training at all (monotony = 0)
+  const monotony =
+    stddev7 > 0.01
+      ? Math.round((mean7 / stddev7) * 100) / 100
+      : mean7 > 0
+      ? 10
+      : 0;
+  const strain = Math.round(acuteLoad * monotony * 10) / 10;
+
+  // Need at least 3 days to compute a meaningful ACWR
   if (daysOfData < 3) {
     return {
       acuteLoad: Math.round(acuteLoad),
@@ -94,6 +119,8 @@ export function calculateACWR(
       risk: 'insufficient_data',
       interpretation: 'Not enough training history yet (need ≥3 days).',
       daysOfData,
+      monotony,
+      strain,
     };
   }
 
@@ -115,6 +142,8 @@ export function calculateACWR(
     risk,
     interpretation,
     daysOfData,
+    monotony,
+    strain,
   };
 }
 
