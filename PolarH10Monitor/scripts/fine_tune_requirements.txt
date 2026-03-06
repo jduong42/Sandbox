@@ -1,0 +1,23 @@
+# Fine-tuning dependencies for DeepSeek-R1-Distill
+# Compatible with llama.rn ecosystem
+
+# Core fine-tuning libraries
+unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git
+torch>=2.0.0
+transformers>=4.36.0
+datasets>=2.14.0
+trl>=0.7.0
+peft>=0.6.0
+accelerate>=0.24.0
+
+# GGUF conversion tools
+llama-cpp-python>=0.2.20
+
+# Data processing
+pandas>=1.5.0
+numpy>=1.21.0
+scikit-learn>=1.0.0
+
+# Utilities
+tqdm>=4.64.0
+wandb  # Optional: for experiment tracking

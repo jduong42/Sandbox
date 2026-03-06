@@ -1,6 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { theme } from '../../../theme';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { errorBoundaryStyles } from '../../../theme';
 
 interface Props {
   children: ReactNode;
@@ -38,13 +38,16 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <View style={styles.container}>
-          <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.message}>
+        <View style={errorBoundaryStyles.container}>
+          <Text style={errorBoundaryStyles.title}>Something went wrong</Text>
+          <Text style={errorBoundaryStyles.message}>
             {this.state.error?.message || 'An unexpected error occurred'}
           </Text>
-          <TouchableOpacity style={styles.button} onPress={this.handleRetry}>
-            <Text style={styles.buttonText}>Try Again</Text>
+          <TouchableOpacity
+            style={errorBoundaryStyles.button}
+            onPress={this.handleRetry}
+          >
+            <Text style={errorBoundaryStyles.buttonText}>Try Again</Text>
           </TouchableOpacity>
         </View>
       );
@@ -53,37 +56,3 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
-  },
-  title: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.error,
-    marginBottom: theme.spacing.md,
-    textAlign: 'center',
-  },
-  message: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  button: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-  },
-  buttonText: {
-    color: theme.colors.white,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.medium,
-  },
-});

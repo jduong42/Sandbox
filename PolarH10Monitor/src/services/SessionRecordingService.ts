@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureRead, secureWrite, secureRemove } from '../utils/secureStorage';
 import { logger } from '../utils/logger';
 import { bleService } from './BLEService';
 
@@ -52,10 +52,7 @@ class SessionRecordingService {
       // await bleService.startInternalRecording();
 
       // Save session as active
-      await AsyncStorage.setItem(
-        this.ACTIVE_SESSION_KEY,
-        JSON.stringify(session),
-      );
+      await secureWrite(this.ACTIVE_SESSION_KEY, session);
 
       logger.info('Recording session started successfully', {
         sessionId: session.id,
@@ -91,7 +88,7 @@ class SessionRecordingService {
       };
 
       // Remove from active sessions
-      await AsyncStorage.removeItem(this.ACTIVE_SESSION_KEY);
+      await secureRemove(this.ACTIVE_SESSION_KEY);
 
       // Add to session history
       await this.addToHistory(completedSession);
@@ -113,10 +110,9 @@ class SessionRecordingService {
    */
   async getActiveSession(): Promise<RecordingSession | null> {
     try {
-      const sessionData = await AsyncStorage.getItem(this.ACTIVE_SESSION_KEY);
-      if (!sessionData) return null;
+      const session = await secureRead<RecordingSession>(this.ACTIVE_SESSION_KEY);
+      if (!session) return null;
 
-      const session = JSON.parse(sessionData);
       // Convert date strings back to Date objects
       session.startTime = new Date(session.startTime);
       if (session.endTime) {
@@ -135,10 +131,7 @@ class SessionRecordingService {
    */
   async getSessionHistory(): Promise<RecordingSession[]> {
     try {
-      const historyData = await AsyncStorage.getItem(this.SESSIONS_HISTORY_KEY);
-      if (!historyData) return [];
-
-      const sessions = JSON.parse(historyData);
+      const sessions = await secureRead<RecordingSession[]>(this.SESSIONS_HISTORY_KEY) ?? [];
       // Convert date strings back to Date objects
       return sessions.map((session: RecordingSession) => ({
         ...session,
@@ -156,7 +149,7 @@ class SessionRecordingService {
    */
   async clearActiveSession(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(this.ACTIVE_SESSION_KEY);
+      await secureRemove(this.ACTIVE_SESSION_KEY);
       logger.info('Active session cleared');
     } catch (error) {
       logger.error('Failed to clear active session', { error });
@@ -174,10 +167,7 @@ class SessionRecordingService {
       // Keep only last 50 sessions to avoid storage bloat
       const limitedHistory = updatedHistory.slice(0, 50);
 
-      await AsyncStorage.setItem(
-        this.SESSIONS_HISTORY_KEY,
-        JSON.stringify(limitedHistory),
-      );
+      await secureWrite(this.SESSIONS_HISTORY_KEY, limitedHistory);
     } catch (error) {
       logger.error('Failed to add session to history', { error });
     }

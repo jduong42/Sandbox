@@ -1,5 +1,5 @@
-export { default as HomeScreen } from './HomeScreen';
-export { default as DataScreen } from './DataScreen';
-export { default as SMLScreen } from './SMLScreen';
-export { default as SettingsScreen } from './SettingsScreen';
-export { default as TrainingDataScreen } from './TrainingDataScreen';
+export { default as SplashScreen } from './SplashScreen';
+export { FigmaHomeScreen } from './FigmaHomeScreen';
+export { FigmaStartWorkoutScreen } from './FigmaStartWorkoutScreen';
+export { FigmaAIChatScreen } from './FigmaAIChatScreen';
+export { FigmaSettingsScreen } from './FigmaSettingsScreen';

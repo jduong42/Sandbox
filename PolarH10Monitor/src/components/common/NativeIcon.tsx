@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, StyleSheet, Platform, TextStyle } from 'react-native';
+import { Text, Platform, TextStyle } from 'react-native';
+import { nativeIconStyles } from '../../theme';
 
 // Native icon component using system symbols and Unicode
 const NativeIcon: React.FC<{
@@ -149,18 +150,12 @@ const NativeIcon: React.FC<{
   };
 
   return (
-    <Text style={[styles.icon, { fontSize: size * 0.8, color }, style]}>
+    <Text
+      style={[nativeIconStyles.icon, { fontSize: size * 0.8, color }, style]}
+    >
       {getNativeIcon(name)}
     </Text>
   );
 };
-
-const styles = StyleSheet.create({
-  icon: {
-    textAlign: 'center',
-    includeFontPadding: false,
-    fontWeight: Platform.OS === 'ios' ? '300' : 'normal',
-  },
-});
 
 export default NativeIcon;
