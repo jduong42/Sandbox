@@ -108,5 +108,5 @@ export const PROMPT_CONFIG = {
   defaultSystemPrompt: SPORTS_SCIENCE_SYSTEM_PROMPT,
   fallbackSystemPrompt: ORIGINAL_SPORTS_SCIENCE_PROMPT,
   version: '4.0-json-output',
-  lastUpdated: '2026-03-03',
+  lastUpdated: new Date().toISOString().slice(0, 10),
 } as const;

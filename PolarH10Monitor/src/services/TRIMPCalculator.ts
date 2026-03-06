@@ -246,7 +246,7 @@ export class HeartRateZoneCalculator {
    */
   static calculateZoneThresholds(
     maxHR: number,
-    method: 'percentage' | 'karvonen' = 'percentage',
+    method: 'percentage' | 'karvonen' = 'karvonen',
     restingHR?: number,
   ) {
     if (method === 'karvonen' && restingHR) {

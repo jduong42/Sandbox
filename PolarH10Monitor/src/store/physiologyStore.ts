@@ -40,6 +40,18 @@ export interface PhysiologySettings {
    * Enables the more accurate Katch-McArdle BMR formula when provided.
    */
   bodyFatFraction?: number;
+  /**
+   * Resting heart rate in bpm (valid range 30–100).
+   * Used by Banister TRIMP and Karvonen zone thresholds.
+   * Defaults to 60 when not set.
+   */
+  restingHeartRate?: number;
+  /**
+   * Maximum heart rate in bpm.
+   * When null or undefined the app derives it as 220 − age.
+   * Setting an explicit value improves TRIMP and zone accuracy.
+   */
+  maxHeartRate?: number | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

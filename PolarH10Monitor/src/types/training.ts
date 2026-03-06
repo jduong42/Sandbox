@@ -55,6 +55,8 @@ export interface UserProfile {
   maxHeartRate: number;
   weight?: number; // kg - optional for some calculations
   fitnessLevel?: 'beginner' | 'intermediate' | 'advanced';
+  /** Biological sex — used for the gender factor in Banister TRIMP */
+  sex?: 'male' | 'female';
 }
 
 /**

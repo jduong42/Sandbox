@@ -246,7 +246,7 @@ export class AnalyticsService {
       const trimpMethods = TRIMPCalculator.calculateAllTRIMPMethods(session, {
         restingHeartRate: userProfile.restingHeartRate,
         maxHeartRate: userProfile.maxHeartRate,
-        gender: 'male', // Could be part of user profile
+        gender: userProfile.sex ?? 'male',
       });
 
       // Use Banister TRIMP as the main score

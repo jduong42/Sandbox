@@ -158,12 +158,17 @@ class TrainingContextService {
     physiology: ReturnType<typeof usePhysiologyStore.getState>['settings'],
     user: ReturnType<typeof useAuthStore.getState>['user'],
   ): UserProfile {
+    const age = physiology?.ageYears ?? 30;
+    const restingHeartRate = physiology?.restingHeartRate ?? 60;
+    const maxHeartRate =
+      physiology?.maxHeartRate != null ? physiology.maxHeartRate : 220 - age;
     return {
       id: user?.id ?? 'unknown',
-      age: physiology?.ageYears ?? 30,
-      restingHeartRate: 60,
-      maxHeartRate: 220 - (physiology?.ageYears ?? 30),
+      age,
+      restingHeartRate,
+      maxHeartRate,
       weight: physiology?.weightKg,
+      sex: physiology?.sex,
     };
   }
 
@@ -203,7 +208,16 @@ class TrainingContextService {
     acwrResult: ReturnType<typeof calculateACWR>;
     totalSessions: number;
   }): string {
-    const lines: string[] = ['[ATHLETE PROFILE — use this for all advice]'];
+    const today = new Date().toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const lines: string[] = [
+      '[ATHLETE PROFILE — use this for all advice]',
+      `Today: ${today}`,
+    ];
 
     // ── Identity ──
     if (user?.name) lines.push(`Name: ${user.name}`);
@@ -223,31 +237,32 @@ class TrainingContextService {
       if (parts.length) lines.push(`Physiology: ${parts.join(', ')}`);
 
       // Pre-compute derived values so the model never has to guess them
-      if (p.ageYears) {
-        const maxHR = 220 - p.ageYears;
-        const restHR = 60; // default resting HR used for TRIMP calculations
-        const z1top = Math.round(maxHR * 0.6);
-        const z2top = Math.round(maxHR * 0.7);
-        const z3top = Math.round(maxHR * 0.8);
-        const z4top = Math.round(maxHR * 0.9);
-        lines.push(
-          `Estimated max HR: ${maxHR} bpm  // 220 − age; use this for all HR zone calculations`,
-        );
-        // One zone per line — improves lookup accuracy for small models
-        lines.push(`HR zones (based on max HR ${maxHR} bpm):`);
-        lines.push(`  Zone 1 (Active Recovery):   ≤${z1top} bpm`);
-        lines.push(
-          `  Zone 2 (Aerobic Base / fat burn): ${z1top + 1}–${z2top} bpm`,
-        );
-        lines.push(`  Zone 3 (Aerobic Threshold):  ${z2top + 1}–${z3top} bpm`);
-        lines.push(`  Zone 4 (Lactate Threshold):  ${z3top + 1}–${z4top} bpm`);
-        lines.push(`  Zone 5 (VO2 Max / Max Effort): >${z4top} bpm`);
-        lines.push(
-          `Resting HR used for TRIMP: ${restHR} bpm  // HR reserve = max HR − resting HR = ${
-            maxHR - restHR
-          } bpm`,
-        );
-      }
+      const age = p.ageYears ?? 30;
+      const maxHR =
+        p.maxHeartRate != null ? p.maxHeartRate : 220 - age;
+      const restHR = p.restingHeartRate ?? 60;
+      const hrReserve = maxHR - restHR;
+      const maxHRSource =
+        p.maxHeartRate != null ? 'measured' : '220 − age estimate';
+
+      lines.push(
+        `Max HR: ${maxHR} bpm (${maxHRSource})`,
+      );
+      lines.push(
+        `Resting HR: ${restHR} bpm  // HR reserve = ${hrReserve} bpm`,
+      );
+
+      // Karvonen zone boundaries — match the app's actual zone calculation
+      const z1top = Math.round(restHR + hrReserve * 0.6);
+      const z2top = Math.round(restHR + hrReserve * 0.7);
+      const z3top = Math.round(restHR + hrReserve * 0.8);
+      const z4top = Math.round(restHR + hrReserve * 0.9);
+      lines.push(`HR zones (Karvonen method, HR reserve = ${hrReserve} bpm):`);
+      lines.push(`  Zone 1 (Active Recovery):        ≤${z1top} bpm`);
+      lines.push(`  Zone 2 (Aerobic Base / fat burn): ${z1top + 1}–${z2top} bpm`);
+      lines.push(`  Zone 3 (Aerobic Threshold):       ${z2top + 1}–${z3top} bpm`);
+      lines.push(`  Zone 4 (Lactate Threshold):       ${z3top + 1}–${z4top} bpm`);
+      lines.push(`  Zone 5 (VO2 Max / Max Effort):    >${z4top} bpm`);
     } else {
       lines.push('Physiology: not set (user has not completed profile)');
     }

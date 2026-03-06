@@ -70,6 +70,12 @@ export function FigmaProfileSettingsScreen() {
       ? String(Math.round(settings.bodyFatFraction * 100))
       : '',
   );
+  const [restingHR, setRestingHR] = useState(
+    settings.restingHeartRate != null ? String(settings.restingHeartRate) : '',
+  );
+  const [maxHR, setMaxHR] = useState(
+    settings.maxHeartRate != null ? String(settings.maxHeartRate) : '',
+  );
 
   const [isSaving, setIsSaving] = useState(false);
   const { toast, show, hide } = useToast();
@@ -91,6 +97,14 @@ export function FigmaProfileSettingsScreen() {
       settings.bodyFatFraction != null
         ? String(Math.round(settings.bodyFatFraction * 100))
         : '',
+    );
+    setRestingHR(
+      settings.restingHeartRate != null
+        ? String(settings.restingHeartRate)
+        : '',
+    );
+    setMaxHR(
+      settings.maxHeartRate != null ? String(settings.maxHeartRate) : '',
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded]);
@@ -118,6 +132,16 @@ export function FigmaProfileSettingsScreen() {
       if (isNaN(n) || n < 1 || n > 70)
         return 'Body fat % must be between 1 and 70.';
     }
+    if (restingHR !== '') {
+      const n = Number(restingHR);
+      if (!Number.isInteger(n) || n < 30 || n > 100)
+        return 'Resting heart rate must be a whole number between 30 and 100 bpm.';
+    }
+    if (maxHR !== '') {
+      const n = Number(maxHR);
+      if (!Number.isInteger(n) || n < 100 || n > 220)
+        return 'Max heart rate must be a whole number between 100 and 220 bpm.';
+    }
     return null;
   }
 
@@ -138,6 +162,9 @@ export function FigmaProfileSettingsScreen() {
         weightKg: weight !== '' ? Number(weight) : undefined,
         activityLevel: activityLevel,
         bodyFatFraction: bodyFat !== '' ? Number(bodyFat) / 100 : undefined,
+        restingHeartRate: restingHR !== '' ? Number(restingHR) : undefined,
+        // null means "derive from age"; undefined means "not changed"
+        maxHeartRate: maxHR !== '' ? Number(maxHR) : null,
       };
       await updateSettings(patch);
       show('Profile saved! ✓', 'success');
@@ -288,6 +315,37 @@ export function FigmaProfileSettingsScreen() {
                 placeholder="e.g. 75"
                 c={c}
               />
+            </SectionCard>
+
+            {/* ── Heart Rate ────────────────────────────────────────────── */}
+            <SectionCard
+              title="Heart Rate"
+              subtitle="Improves Karvonen zone accuracy and Banister TRIMP"
+              c={c}
+            >
+              <NumericField
+                label="Resting HR"
+                unit="bpm"
+                value={restingHR}
+                onChangeText={setRestingHR}
+                placeholder="e.g. 60"
+                c={c}
+              />
+              <NumericField
+                label="Max HR"
+                unit="bpm"
+                value={maxHR}
+                onChangeText={setMaxHR}
+                placeholder={`e.g. ${
+                  age !== '' ? 220 - Number(age) : 190
+                } (220 − age)`}
+                c={c}
+              />
+              <Text style={[styles.advancedHint, { color: c.muted }]}>
+                Leave Max HR blank to use the 220 − age estimate. Setting your
+                measured values significantly improves training zone and TRIMP
+                accuracy.
+              </Text>
             </SectionCard>
 
             {/* ── Activity Level ────────────────────────────────────────── */}

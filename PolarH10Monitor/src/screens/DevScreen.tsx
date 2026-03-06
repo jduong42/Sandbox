@@ -101,11 +101,15 @@ export function DevScreen() {
     setSeeding(true);
     try {
       const physiology = usePhysiologyStore.getState().settings;
+      const age = physiology?.ageYears ?? 30;
+      const restingHeartRate = physiology?.restingHeartRate ?? 60;
+      const maxHeartRate =
+        physiology?.maxHeartRate != null ? physiology.maxHeartRate : 220 - age;
       const generator = new DummyDataGenerator({
-        age: physiology?.ageYears ?? 30,
+        age,
         weight: physiology?.weightKg ?? 75,
-        restingHeartRate: 60,
-        maxHeartRate: 220 - (physiology?.ageYears ?? 30),
+        restingHeartRate,
+        maxHeartRate,
       });
       const end = new Date();
       const start = new Date();
@@ -113,10 +117,11 @@ export function DevScreen() {
       const sessions = generator.generateSessions(start, end, 4);
       const enriched = AnalyticsService.enrichSessionsWithTRIMP(sessions, {
         id: 'seed',
-        age: physiology?.ageYears ?? 30,
+        age,
         weight: physiology?.weightKg ?? 75,
-        restingHeartRate: 60,
-        maxHeartRate: 220 - (physiology?.ageYears ?? 30),
+        restingHeartRate,
+        maxHeartRate,
+        sex: physiology?.sex,
       });
       await AsyncStorage.setItem(SEEDED_SESSIONS_KEY, JSON.stringify(enriched));
       await refreshKeys();
