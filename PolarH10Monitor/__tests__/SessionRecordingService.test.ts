@@ -9,12 +9,32 @@ jest.mock('../src/utils/secureStorage', () => ({
   secureRead: jest.fn(),
   secureWrite: jest.fn(() => Promise.resolve()),
   secureRemove: jest.fn(() => Promise.resolve()),
-  SECURE_STORAGE_KEYS: [
-    'sessions_history',
-    'seeded_training_sessions',
-    'active_recording_session',
-    '@device_history',
-  ],
+  SECURE_STORAGE_KEYS: ['active_recording_session', '@device_history'],
+}));
+
+// Mock SessionRepository so tests don't need SQLite
+jest.mock('../src/services/SessionRepository', () => ({
+  sessionRepository: {
+    insert: jest.fn(() => Promise.resolve()),
+    upsertBatch: jest.fn(() => Promise.resolve()),
+    getAll: jest.fn(() => Promise.resolve([])),
+    getRecent: jest.fn(() => Promise.resolve([])),
+    getByDateRange: jest.fn(() => Promise.resolve([])),
+    deleteSeeded: jest.fn(() => Promise.resolve()),
+    deleteAll: jest.fn(() => Promise.resolve()),
+    count: jest.fn(() => Promise.resolve(0)),
+  },
+}));
+
+// Mock SummaryComputeService so tests don't need SQLite
+jest.mock('../src/services/SummaryComputeService', () => ({
+  summaryComputeService: {
+    recomputeForSession: jest.fn(() => Promise.resolve()),
+    getWeeklySummaryText: jest.fn(() => Promise.resolve(null)),
+    getMonthlySummaryText: jest.fn(() => Promise.resolve(null)),
+  },
+  computeWeekKey: jest.fn(() => '2026-W10'),
+  computeMonthKey: jest.fn(() => '2026-03'),
 }));
 
 import {
@@ -22,16 +42,24 @@ import {
   secureWrite,
   secureRemove,
 } from '../src/utils/secureStorage';
+import { sessionRepository } from '../src/services/SessionRepository';
 
 const mockSecureRead = secureRead as jest.MockedFunction<typeof secureRead>;
 const mockSecureWrite = secureWrite as jest.MockedFunction<typeof secureWrite>;
 const mockSecureRemove = secureRemove as jest.MockedFunction<
   typeof secureRemove
 >;
+const mockInsert = sessionRepository.insert as jest.Mock;
 
 describe('SessionRecordingService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    // resetAllMocks also flushes mockResolvedValueOnce queues, preventing
+    // unconsumed mock values from leaking between tests.
+    jest.resetAllMocks();
+    // Re-apply default implementations after reset
+    mockSecureWrite.mockResolvedValue(undefined);
+    mockSecureRemove.mockResolvedValue(undefined);
+    mockInsert.mockResolvedValue(undefined);
   });
 
   describe('startRecording', () => {
@@ -110,12 +138,10 @@ describe('SessionRecordingService', () => {
         status: 'recording',
       };
 
-      mockSecureRead
-        .mockResolvedValueOnce(activeSession as any) // getActiveSession
-        .mockResolvedValueOnce([] as any); // getSessionHistory
+      mockSecureRead.mockResolvedValueOnce(activeSession as any); // getActiveSession
 
-      mockSecureRemove.mockResolvedValue();
-      mockSecureWrite.mockResolvedValue();
+      mockSecureRemove.mockResolvedValue(undefined);
+      mockSecureWrite.mockResolvedValue(undefined);
 
       const completedSession = await sessionRecordingService.stopRecording();
 
@@ -127,11 +153,10 @@ describe('SessionRecordingService', () => {
       expect(completedSession.duration).toBeGreaterThan(0);
 
       expect(mockSecureRemove).toHaveBeenCalledWith('active_recording_session');
-      expect(mockSecureWrite).toHaveBeenCalledWith(
-        'sessions_history',
-        expect.arrayContaining([
-          expect.objectContaining({ status: 'completed' }),
-        ]),
+      // Session is now persisted via sessionRepository.insert(), not secureWrite
+      expect(mockInsert).toHaveBeenCalledWith(
+        expect.objectContaining({ id: activeSession.id }),
+        false,
       );
     });
 

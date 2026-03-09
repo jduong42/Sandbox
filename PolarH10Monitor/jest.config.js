@@ -9,6 +9,8 @@ module.exports = {
     '^react-native-ble-plx$': '<rootDir>/__mocks__/react-native-ble-plx.js',
     '^llama\\.rn$': '<rootDir>/__mocks__/llama.rn.js',
     '^react-native-fs$': '<rootDir>/__mocks__/react-native-fs.js',
+    '^@op-engineering/op-sqlite$':
+      '<rootDir>/__mocks__/@op-engineering/op-sqlite.js',
   },
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',

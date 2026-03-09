@@ -29,8 +29,9 @@ import { useAuthStore } from '../store/authStore';
 import { useShallow } from 'zustand/react/shallow';
 import { DummyDataGenerator } from '../services/DummyDataGenerator';
 import { AnalyticsService } from '../services/AnalyticsService';
-import { SEEDED_SESSIONS_KEY } from '../services/TrainingContextService';
 import { trainingContextService } from '../services/TrainingContextService';
+import { sessionRepository } from '../services/SessionRepository';
+import { summaryComputeService } from '../services/SummaryComputeService';
 import { usePhysiologyStore } from '../store/physiologyStore';
 
 const STORAGE_KEY = 'app-user';
@@ -127,7 +128,10 @@ export function DevScreen() {
         maxHeartRate,
         sex: physiology?.sex,
       });
-      await secureWrite(SEEDED_SESSIONS_KEY, enriched);
+      await sessionRepository.upsertBatch(enriched as any, true);
+      for (const s of enriched) {
+        await summaryComputeService.recomputeForSession(s as any);
+      }
       await refreshKeys();
       Alert.alert(
         '✅ Seeded',
@@ -141,7 +145,7 @@ export function DevScreen() {
   };
 
   const handleClearSeededData = async () => {
-    await secureRemove(SEEDED_SESSIONS_KEY);
+    await sessionRepository.deleteSeeded();
     setLastContextDebug(null);
     await refreshKeys();
   };
@@ -225,6 +229,7 @@ export function DevScreen() {
               await Promise.allSettled(
                 SECURE_STORAGE_KEYS.map(k => secureRemove(k)),
               );
+              await sessionRepository.deleteAll();
               await AsyncStorage.clear();
               await refreshKeys();
             } finally {
@@ -274,6 +279,7 @@ export function DevScreen() {
             setBusy(true);
             try {
               await EncryptedStorage.clear();
+              await sessionRepository.deleteAll();
               await logout();
               await refreshKeys();
             } finally {

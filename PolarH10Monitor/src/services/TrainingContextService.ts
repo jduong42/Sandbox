@@ -13,7 +13,6 @@
  * Nothing here reaches the internet — all data stays on-device.
  */
 
-import { secureRead } from '../utils/secureStorage';
 import { usePhysiologyStore } from '../store/physiologyStore';
 import { useAuthStore } from '../store/authStore';
 import { AnalyticsService } from './AnalyticsService';
@@ -21,9 +20,15 @@ import { calculateACWR, DailyLoad } from '../utils/ACWRCalculator';
 import { TrainingSession, UserProfile } from '../types/training';
 import { parseQuery } from './QueryParser';
 import { topNByDecay } from '../utils/timeDecay';
+import { sessionRepository } from './SessionRepository';
+import {
+  summaryComputeService,
+  computeWeekKey,
+  computeMonthKey,
+} from './SummaryComputeService';
 
-const SESSIONS_HISTORY_KEY = 'sessions_history';
-// Key used by DevScreen seed function
+// Kept as an exported constant so DevScreen can still reference it during
+// the transition period — it will be removed once DevScreen is updated.
 export const SEEDED_SESSIONS_KEY = 'seeded_training_sessions';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -156,17 +161,27 @@ class TrainingContextService {
 
     if (parsed.dateRange) {
       const { from, to } = parsed.dateRange;
-      let filtered = enriched.filter(s => {
-        const d = new Date(s.date);
-        return d >= from && d <= to;
-      });
-      if (parsed.sessionTypes) {
-        const typed = filtered.filter(s =>
-          parsed.sessionTypes!.includes(s.type),
-        );
-        if (typed.length > 0) filtered = typed;
-      }
-      displaySessions = filtered;
+
+      // ── Summary shortcut: try pre-computed text for week/month queries ──────
+      const wk = computeWeekKey(from);
+      const mk = computeMonthKey(from);
+      const weekSummary = await summaryComputeService.getWeeklySummaryText(wk);
+      const monthSummary = await summaryComputeService.getMonthlySummaryText(
+        mk,
+      );
+      const precomputedSummary = weekSummary ?? monthSummary;
+
+      // Fetch sessions for the requested window directly from SQLite
+      const rangeSessions = await sessionRepository.getByDateRange(
+        from,
+        to,
+        parsed.sessionTypes ?? undefined,
+      );
+      const rangeEnriched = rangeSessions.some(s => !s.trimpScore)
+        ? AnalyticsService.enrichSessionsWithTRIMP(rangeSessions, userProfile)
+        : rangeSessions;
+
+      displaySessions = rangeEnriched;
       selectionNote =
         `${from.toLocaleDateString('en-GB', {
           day: 'numeric',
@@ -180,10 +195,19 @@ class TrainingContextService {
         })}` +
         `: ${displaySessions.length} session${
           displaySessions.length !== 1 ? 's' : ''
-        }`;
+        }` +
+        (precomputedSummary ? ' (summary cached)' : '');
     } else {
-      // No explicit date range — use time-decay to pick the 10 most relevant
-      let candidates = topNByDecay(enriched, 10);
+      // No explicit date range — fetch top candidates from SQLite then re-rank
+      // by time-decay so the most contextually relevant sessions surface first.
+      const recentSessions = await sessionRepository.getRecent(
+        30,
+        parsed.sessionTypes ?? undefined,
+      );
+      const recentEnriched = recentSessions.some(s => !s.trimpScore)
+        ? AnalyticsService.enrichSessionsWithTRIMP(recentSessions, userProfile)
+        : recentSessions;
+      let candidates = topNByDecay(recentEnriched, 10);
       if (parsed.sessionTypes) {
         const typed = candidates.filter(s =>
           parsed.sessionTypes!.includes(s.type),
@@ -233,23 +257,7 @@ class TrainingContextService {
 
   private async loadSessions(): Promise<TrainingSession[]> {
     try {
-      // Try both the seeded key (DevScreen) and the real recording service key
-      const [seededSessions, realSessions] = await Promise.all([
-        secureRead<TrainingSession[]>(SEEDED_SESSIONS_KEY).then(v => v ?? []),
-        secureRead<TrainingSession[]>(SESSIONS_HISTORY_KEY).then(v => v ?? []),
-      ]);
-
-      // Merge, deduplicate by id, sort oldest→newest
-      const all = [...seededSessions, ...realSessions];
-      const seen = new Set<string>();
-      const unique = all.filter(s => {
-        if (seen.has(s.id)) return false;
-        seen.add(s.id);
-        return true;
-      });
-      return unique.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-      );
+      return await sessionRepository.getAll();
     } catch {
       return [];
     }

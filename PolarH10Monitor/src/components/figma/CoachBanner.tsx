@@ -2,15 +2,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
-import { secureRead } from '../../utils/secureStorage';
-import { SEEDED_SESSIONS_KEY } from '../../services/TrainingContextService';
+import { sessionRepository } from '../../services/SessionRepository';
 import { AnalyticsService } from '../../services/AnalyticsService';
 import { calculateACWR, DailyLoad, ACWRRisk } from '../../utils/ACWRCalculator';
 import { calculateStreak } from '../../utils/StreakCalculator';
 import { usePhysiologyStore } from '../../store/physiologyStore';
 import type { TrainingSession } from '../../types/training';
-
-const SESSIONS_HISTORY_KEY = 'sessions_history';
 
 // ─── Message logic ────────────────────────────────────────────────────────────
 
@@ -119,19 +116,9 @@ export function CoachBanner() {
 
   const loadBanner = useCallback(async () => {
     try {
-      const [real, seeded] = await Promise.all([
-        secureRead<TrainingSession[]>(SESSIONS_HISTORY_KEY).then(v => v ?? []),
-        secureRead<TrainingSession[]>(SEEDED_SESSIONS_KEY).then(v => v ?? []),
-      ]);
-
-      // Merge + deduplicate
-      const seen = new Set<string>();
-      const all = [...real, ...seeded].filter(s => {
-        const key = String((s as any).id);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+      // Fetch most recent 90 days of sessions from SQLite (covers ACWR window
+      // + streak calculation without loading the full history into memory).
+      const all = await sessionRepository.getRecent(90);
 
       // Enrich TRIMP
       const age = physiology?.ageYears ?? 30;

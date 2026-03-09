@@ -96,9 +96,9 @@ export async function secureRemove(key: string): Promise<void> {
  * All keys managed by SecureStorage.
  * Used by DevScreen to wipe encrypted data alongside AsyncStorage.
  */
+// NOTE: 'sessions_history' and 'seeded_training_sessions' have been migrated
+// to SQLite (DatabaseService) and are no longer stored in EncryptedStorage.
 export const SECURE_STORAGE_KEYS = [
-  'sessions_history',
-  'seeded_training_sessions',
   'active_recording_session',
   '@device_history',
 ] as const;

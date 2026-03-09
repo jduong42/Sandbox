@@ -9,7 +9,6 @@ import {
   SafeAreaView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { secureRead } from '../utils/secureStorage';
 import { ActivityRing } from '../components/figma/ActivityRing';
 import { StatCard } from '../components/figma/StatCard';
 import { RecentActivity } from '../components/figma/RecentActivity';
@@ -26,11 +25,9 @@ import {
   toUserProfile,
 } from '../store/physiologyStore';
 import type { TrainingSession } from '../types/training';
-import { SEEDED_SESSIONS_KEY } from '../services/TrainingContextService';
+import { sessionRepository } from '../services/SessionRepository';
 import { calculateStreak } from '../utils/StreakCalculator';
 import type { StreakData } from '../utils/StreakCalculator';
-
-const SESSIONS_HISTORY_KEY = 'sessions_history';
 
 // Icon + colour by TrainingType string
 function activityMeta(type: string): { icon: string; color: string } {
@@ -116,30 +113,8 @@ export function FigmaHomeScreen() {
 
   const loadRecentActivities = useCallback(async () => {
     try {
-      const [real, seeded] = await Promise.all([
-        secureRead<TrainingSession[]>(SESSIONS_HISTORY_KEY).then(v => v ?? []),
-        secureRead<TrainingSession[]>(SEEDED_SESSIONS_KEY).then(v => v ?? []),
-      ]);
-
-      // Merge, deduplicate by id, sort by date desc
-      const seen = new Set<string>();
-      const all = [...real, ...seeded]
-        .filter(s => {
-          const key = String((s as any).id);
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        })
-        .sort((a, b) => {
-          const da = new Date(
-            (a as any).date ?? (a as any).startTime ?? 0,
-          ).getTime();
-          const db = new Date(
-            (b as any).date ?? (b as any).startTime ?? 0,
-          ).getTime();
-          return db - da;
-        })
-        .slice(0, 5);
+      // Fetch the 5 most recent sessions directly from SQLite
+      const all = await sessionRepository.getRecent(5);
 
       if (all.length > 0) {
         setRecentActivities(
