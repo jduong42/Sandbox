@@ -260,20 +260,48 @@ class DatabaseService {
     const location =
       Platform.OS === 'ios' ? IOS_LIBRARY_PATH : ANDROID_DATABASE_PATH;
 
-    const rawDb = OPSQLite.open({
-      name: DB_NAME,
-      location,
-      encryptionKey,
-    });
+    // SQLCipher does not throw on open() with a wrong key — it throws on the
+    // first SQL execution. Wrap DDL to detect and recover from stale DB files
+    // (e.g. Keychain wiped without deleting the encrypted file on disk).
+    let rawDb = OPSQLite.open({ name: DB_NAME, location, encryptionKey });
 
-    // Create schema — all DDL statements are idempotent
-    for (const ddl of DDL_STATEMENTS) {
-      await rawDb.execute(ddl);
+    try {
+      for (const ddl of DDL_STATEMENTS) {
+        await rawDb.execute(ddl);
+      }
+    } catch (ddlErr) {
+      // Key/file mismatch — delete the stale encrypted file and start fresh.
+      logger.warn('[DatabaseService] Schema DDL failed — recreating DB', { ddlErr });
+      try { rawDb.delete(location); } catch {}
+      rawDb = OPSQLite.open({ name: DB_NAME, location, encryptionKey });
+      for (const ddl of DDL_STATEMENTS) {
+        await rawDb.execute(ddl);
+      }
     }
 
     this._db = rawDb;
 
     await runMigrationV1(rawDb);
+  }
+
+  /**
+   * Deletes the DB file from disk and nulls the connection handle.
+   * Call this BEFORE wiping EncryptedStorage so the encryption key and file
+   * stay in sync — otherwise the next launch can't decrypt the stale file.
+   * After this call, `initialize()` will create a fresh empty database.
+   */
+  async closeAndDelete(): Promise<void> {
+    const location =
+      Platform.OS === 'ios' ? IOS_LIBRARY_PATH : ANDROID_DATABASE_PATH;
+    if (this._db) {
+      try {
+        // db.delete(location) closes the connection AND removes the file.
+        this._db.delete(location);
+      } catch (e) {
+        logger.warn('[DatabaseService] Failed to delete DB file', { e });
+      }
+      this._db = null;
+    }
   }
 
   /**

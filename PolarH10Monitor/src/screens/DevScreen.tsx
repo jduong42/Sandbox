@@ -32,6 +32,7 @@ import { AnalyticsService } from '../services/AnalyticsService';
 import { trainingContextService } from '../services/TrainingContextService';
 import { sessionRepository } from '../services/SessionRepository';
 import { summaryComputeService } from '../services/SummaryComputeService';
+import { databaseService } from '../services/DatabaseService';
 import { usePhysiologyStore } from '../store/physiologyStore';
 
 const STORAGE_KEY = 'app-user';
@@ -278,8 +279,11 @@ export function DevScreen() {
           onPress: async () => {
             setBusy(true);
             try {
+              // Close + delete the DB file BEFORE clearing EncryptedStorage.
+              // If the key is wiped while the encrypted file remains on disk,
+              // the next launch would fail to open it (key/file mismatch).
+              await databaseService.closeAndDelete();
               await EncryptedStorage.clear();
-              await sessionRepository.deleteAll();
               await logout();
               await refreshKeys();
             } finally {

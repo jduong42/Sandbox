@@ -23,6 +23,7 @@ function makeDb(name) {
       await fn(tx);
     }),
     close: jest.fn(),
+    delete: jest.fn(),
     attach: jest.fn(),
     detach: jest.fn(),
   };
@@ -31,6 +32,7 @@ function makeDb(name) {
 module.exports = {
   OPSQLite: {
     open: jest.fn(opts => makeDb(opts.name)),
+    deleteDb: jest.fn(),
     isSQLCipher: jest.fn(() => true),
   },
   IOS_LIBRARY_PATH: '/tmp/ios',
