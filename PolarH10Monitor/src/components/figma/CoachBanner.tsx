@@ -32,8 +32,9 @@ function buildBannerState(
     return {
       color: '#6366f1',
       icon: '👋',
-      message: "Welcome! Log your first session to unlock personalised coaching.",
-      suggestion: "How do I get started?",
+      message:
+        'Welcome! Log your first session to unlock personalised coaching.',
+      suggestion: 'How do I get started?',
     };
   }
 
@@ -53,7 +54,7 @@ function buildBannerState(
       color: '#f59e0b',
       icon: '🔥',
       message: `${currentStreak}-day streak! Consistency is the most valuable thing you can build.`,
-      suggestion: "How do I keep this streak going?",
+      suggestion: 'How do I keep this streak going?',
     };
   }
 
@@ -63,38 +64,42 @@ function buildBannerState(
       return {
         color: '#f87171',
         icon: '🛑',
-        message: "Your training has spiked this week. A rest day or easy walk will actually make you stronger.",
-        suggestion: "Should I take a rest day today?",
+        message:
+          'Your training has spiked this week. A rest day or easy walk will actually make you stronger.',
+        suggestion: 'Should I take a rest day today?',
       };
     case 'moderate_risk':
       return {
         color: '#fbbf24',
         icon: '⚠️',
-        message: "You've been pushing hard lately. Mixing in an easy session this week helps you absorb the work.",
+        message:
+          "You've been pushing hard lately. Mixing in an easy session this week helps you absorb the work.",
         suggestion: "What's a good easy session for today?",
       };
     case 'optimal':
       return {
         color: '#4ade80',
         icon: '✅',
-        message: currentStreak >= 3
-          ? `${currentStreak}-day streak and in the optimal zone — you're nailing it.`
-          : "You're in the optimal training zone. Keep this rhythm going.",
-        suggestion: "Am I making progress?",
+        message:
+          currentStreak >= 3
+            ? `${currentStreak}-day streak and in the optimal zone — you're nailing it.`
+            : "You're in the optimal training zone. Keep this rhythm going.",
+        suggestion: 'Am I making progress?',
       };
     case 'detraining':
       return {
         color: '#60a5fa',
         icon: '📉',
-        message: "Your load has dropped this week — your body has recovered and is ready for more when you are.",
-        suggestion: "What should I do today?",
+        message:
+          'Your load has dropped this week — your body has recovered and is ready for more when you are.',
+        suggestion: 'What should I do today?',
       };
     default:
       return {
         color: '#6366f1',
         icon: '💡',
-        message: "Keep logging sessions to get personalised training advice.",
-        suggestion: "Help me plan this week",
+        message: 'Keep logging sessions to get personalised training advice.',
+        suggestion: 'Help me plan this week',
       };
   }
 }
@@ -108,8 +113,8 @@ export function CoachBanner() {
   const [banner, setBanner] = useState<BannerState>({
     color: '#6366f1',
     icon: '💡',
-    message: "Loading your coaching summary…",
-    suggestion: "What should I do today?",
+    message: 'Loading your coaching summary…',
+    suggestion: 'What should I do today?',
   });
 
   const loadBanner = useCallback(async () => {
@@ -137,7 +142,10 @@ export function CoachBanner() {
         maxHeartRate: physiology?.maxHeartRate ?? 220 - age,
         sex: physiology?.sex,
       };
-      const enriched = AnalyticsService.enrichSessionsWithTRIMP(all, userProfile);
+      const enriched = AnalyticsService.enrichSessionsWithTRIMP(
+        all,
+        userProfile,
+      );
 
       // ACWR
       const dailyLoads: DailyLoad[] = enriched.map(s => ({
@@ -147,7 +155,9 @@ export function CoachBanner() {
       const acwrResult = calculateACWR(dailyLoads);
 
       // Streak
-      const streakData = calculateStreak(enriched as unknown as TrainingSession[]);
+      const streakData = calculateStreak(
+        enriched as unknown as TrainingSession[],
+      );
 
       setBanner(
         buildBannerState(
@@ -186,7 +196,10 @@ export function CoachBanner() {
 
   return (
     <TouchableOpacity
-      style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}
+      style={[
+        styles.card,
+        { backgroundColor: c.surface, borderColor: c.border },
+      ]}
       onPress={handleAskCoach}
       activeOpacity={0.85}
       accessibilityLabel="Open coach chat"

@@ -237,7 +237,14 @@ export function FigmaHomeScreen() {
 
           {/* Coach Banner */}
           <View style={[styles.section, { marginTop: 8 }]}>
-            <Text style={[styles.sectionTitle, { color: c.foreground, marginBottom: 10 }]}>Today's Coaching</Text>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: c.foreground, marginBottom: 10 },
+              ]}
+            >
+              Today's Coaching
+            </Text>
             <CoachBanner />
           </View>
           {/* Calorie disclaimer — visible when physiology profile is incomplete */}

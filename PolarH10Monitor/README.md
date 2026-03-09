@@ -104,18 +104,18 @@ src/
 
 ## 📦 Key Dependencies
 
-| Package | Purpose |
-|---|---|
-| `react-native-ble-plx` | Bluetooth LE (Polar H10) |
-| `llama.rn` | On-device LLM inference (GGUF) |
-| `zustand` | State management |
-| `react-native-encrypted-storage` | OS-level secure storage |
-| `crypto-js` | AES-256 encryption layer |
-| `react-native-get-random-values` | `crypto.getRandomValues()` polyfill |
-| `@react-native-async-storage/async-storage` | Storage fallback |
-| `react-navigation` | Stack + bottom-tab navigation |
-| `react-native-linear-gradient` | Gradient UI |
-| `react-native-safe-area-context` | Safe area insets |
+| Package                                     | Purpose                             |
+| ------------------------------------------- | ----------------------------------- |
+| `react-native-ble-plx`                      | Bluetooth LE (Polar H10)            |
+| `llama.rn`                                  | On-device LLM inference (GGUF)      |
+| `zustand`                                   | State management                    |
+| `react-native-encrypted-storage`            | OS-level secure storage             |
+| `crypto-js`                                 | AES-256 encryption layer            |
+| `react-native-get-random-values`            | `crypto.getRandomValues()` polyfill |
+| `@react-native-async-storage/async-storage` | Storage fallback                    |
+| `react-navigation`                          | Stack + bottom-tab navigation       |
+| `react-native-linear-gradient`              | Gradient UI                         |
+| `react-native-safe-area-context`            | Safe area insets                    |
 
 ---
 
@@ -178,14 +178,14 @@ Simulator environments fall back to AsyncStorage automatically (encrypted values
 
 ## 🔧 Troubleshooting
 
-| Issue | Fix |
-|---|---|
-| `crypto.getRandomValues` error | `import 'react-native-get-random-values'` must be the **first** import in `index.js` |
-| EncryptedStorage fails on simulator | Expected — app falls back to AsyncStorage; values remain AES-256 encrypted |
-| AI chat shows "Error" | Confirm `model_q4km.gguf` is in `ios/` and added to Xcode bundle resources |
-| `Promise.allSettled` TS error | `tsconfig.json` `lib` must include `"es2020"` or later |
-| Infinite re-render (Zustand) | Use `useShallow` for any selector returning an object |
-| BLE scan not finding device | Ensure Bluetooth permission granted; Polar H10 must be in pairing mode |
+| Issue                               | Fix                                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------ |
+| `crypto.getRandomValues` error      | `import 'react-native-get-random-values'` must be the **first** import in `index.js` |
+| EncryptedStorage fails on simulator | Expected — app falls back to AsyncStorage; values remain AES-256 encrypted           |
+| AI chat shows "Error"               | Confirm `model_q4km.gguf` is in `ios/` and added to Xcode bundle resources           |
+| `Promise.allSettled` TS error       | `tsconfig.json` `lib` must include `"es2020"` or later                               |
+| Infinite re-render (Zustand)        | Use `useShallow` for any selector returning an object                                |
+| BLE scan not finding device         | Ensure Bluetooth permission granted; Polar H10 must be in pairing mode               |
 
 ---
 
@@ -213,4 +213,3 @@ Tests mock native modules (`react-native-ble-plx`, `llama.rn`, `react-native-enc
 ## 📄 License
 
 MIT — free to use, fork, and modify.
-

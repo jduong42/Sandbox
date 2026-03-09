@@ -19,6 +19,8 @@ import { useAuthStore } from '../store/authStore';
 import { AnalyticsService } from './AnalyticsService';
 import { calculateACWR, DailyLoad } from '../utils/ACWRCalculator';
 import { TrainingSession, UserProfile } from '../types/training';
+import { parseQuery } from './QueryParser';
+import { topNByDecay } from '../utils/timeDecay';
 
 const SESSIONS_HISTORY_KEY = 'sessions_history';
 // Key used by DevScreen seed function
@@ -113,6 +115,120 @@ class TrainingContextService {
     };
   }
 
+  /**
+   * Query-aware context builder.
+   *
+   * Parses the user's question for date-range and session-type hints:
+   *  • Explicit date range found  → filter sessions to that exact window
+   *  • No date range              → pick top 10 by time-decay (most recent = highest score)
+   *  • Session type hint found    → additionally filter by type within either strategy
+   *
+   * ACWR + weekly TRIMP always use the full last-28-day window so load
+   * risk metrics are never affected by the query filter.
+   */
+  async buildContextForQuery(userQuery: string): Promise<TrainingContext> {
+    const parsed = parseQuery(userQuery);
+    const [allSessions, physiology, user] = await Promise.all([
+      this.loadSessions(),
+      this.getPhysiology(),
+      this.getUser(),
+    ]);
+
+    const userProfile = this.buildUserProfile(physiology, user);
+    const enriched = allSessions.some(s => !s.trimpScore)
+      ? AnalyticsService.enrichSessionsWithTRIMP(allSessions, userProfile)
+      : allSessions;
+
+    // ACWR always based on last 28 days regardless of the query filter
+    const cutoff28 = new Date();
+    cutoff28.setDate(cutoff28.getDate() - 28);
+    const last28 = enriched.filter(s => new Date(s.date) >= cutoff28);
+    const dailyLoads: DailyLoad[] = last28.map(s => ({
+      date: new Date(s.date),
+      trimp: s.trimpScore ?? 0,
+    }));
+    const acwrResult = calculateACWR(dailyLoads);
+    const weeklyTrimp = this.computeWeeklyTrimp(last28);
+
+    // ── Select display sessions ──────────────────────────────────────────────
+    let displaySessions: TrainingSession[];
+    let selectionNote = '';
+
+    if (parsed.dateRange) {
+      const { from, to } = parsed.dateRange;
+      let filtered = enriched.filter(s => {
+        const d = new Date(s.date);
+        return d >= from && d <= to;
+      });
+      if (parsed.sessionTypes) {
+        const typed = filtered.filter(s =>
+          parsed.sessionTypes!.includes(s.type),
+        );
+        if (typed.length > 0) filtered = typed;
+      }
+      displaySessions = filtered;
+      selectionNote =
+        `${from.toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })}` +
+        ` – ${to.toLocaleDateString('en-GB', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })}` +
+        `: ${displaySessions.length} session${
+          displaySessions.length !== 1 ? 's' : ''
+        }`;
+    } else {
+      // No explicit date range — use time-decay to pick the 10 most relevant
+      let candidates = topNByDecay(enriched, 10);
+      if (parsed.sessionTypes) {
+        const typed = candidates.filter(s =>
+          parsed.sessionTypes!.includes(s.type),
+        );
+        if (typed.length > 0) candidates = typed;
+      }
+      displaySessions = candidates;
+    }
+
+    const last7 = displaySessions.slice(-20).map(s => ({
+      date: new Date(s.date).toLocaleDateString('en-GB', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+      }),
+      type: s.type,
+      durationMin: Math.round(s.duration / 60),
+      avgHR: Math.round(s.averageHeartRate),
+      trimp: Math.round(s.trimpScore ?? 0),
+    }));
+
+    const contextBlock = this.formatContextBlock({
+      physiology,
+      user,
+      last7,
+      weeklyTrimp,
+      acwrResult,
+      totalSessions: last28.length,
+      sessionSelectionNote: selectionNote || undefined,
+    });
+
+    return {
+      contextBlock,
+      debug: {
+        sessionCount: last28.length,
+        acwr: acwrResult.acwr,
+        acwrRisk: acwrResult.risk,
+        acuteLoad: acwrResult.acuteLoad,
+        chronicLoad: acwrResult.chronicLoad,
+        last7DayTrimp: weeklyTrimp.slice(-7),
+        physiologyComplete: !!physiology,
+      },
+    };
+  }
+
   // ── Private helpers ─────────────────────────────────────────────────────────
 
   private async loadSessions(): Promise<TrainingSession[]> {
@@ -187,6 +303,7 @@ class TrainingContextService {
     weeklyTrimp,
     acwrResult,
     totalSessions,
+    sessionSelectionNote,
   }: {
     physiology: ReturnType<typeof usePhysiologyStore.getState>['settings'];
     user: ReturnType<typeof useAuthStore.getState>['user'];
@@ -200,6 +317,8 @@ class TrainingContextService {
     weeklyTrimp: number[];
     acwrResult: ReturnType<typeof calculateACWR>;
     totalSessions: number;
+    /** Optional note describing which sessions are shown (date range / count). */
+    sessionSelectionNote?: string;
   }): string {
     const today = new Date().toLocaleDateString('en-GB', {
       weekday: 'long',
@@ -288,8 +407,11 @@ class TrainingContextService {
 
     // ── Recent sessions ──
     if (last7.length > 0) {
+      const sessionLabel = sessionSelectionNote
+        ? `Sessions shown (${sessionSelectionNote}):`
+        : 'Recent sessions (newest last):';
       lines.push(
-        'Recent sessions (newest last):' +
+        sessionLabel +
           '  // avg HR = mean heart rate measured by Polar H10 chest strap during the session',
       );
       for (const s of last7) {

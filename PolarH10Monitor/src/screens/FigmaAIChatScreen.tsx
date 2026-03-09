@@ -152,7 +152,8 @@ export function FigmaAIChatScreen() {
       scrollToBottom();
 
       try {
-        const { contextBlock } = await trainingContextService.buildContext();
+        const { contextBlock } =
+          await trainingContextService.buildContextForQuery(text);
         const prompt = createSportsPromptWithContext(text, contextBlock);
         let accumulated = '';
 
