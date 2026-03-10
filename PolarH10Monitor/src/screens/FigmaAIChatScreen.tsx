@@ -187,7 +187,7 @@ export function FigmaAIChatScreen() {
         const result = await llamaTextGenerationService.generateTextStreaming(
           prompt,
           {
-            maxTokens: 700,
+            maxTokens: 1024,
             temperature: 0.4,
             stopTokens: ['"}', '<|im_end|>', '</s>'],
           },
