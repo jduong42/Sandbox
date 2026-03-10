@@ -36,6 +36,10 @@ class LlamaTextGenerationService {
    * Initialize the service with GGUF model
    */
   async initialize(modelPath?: string): Promise<boolean> {
+    if (this.isInitialized && this.context) {
+      return true;
+    }
+
     try {
       logger.info('🦙 Initializing Llama Text Generation Service...');
 
