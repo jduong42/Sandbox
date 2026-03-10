@@ -25,9 +25,11 @@ A React Native app for Polar H10 athletes — real-time heart rate monitoring, e
 
 ### AI Coach (On-Device)
 
-- **Llama 3.2 3B GGUF** — Fully offline inference via `llama.rn`; no API key, no internet
-- **Streaming Chat** — Real-time token streaming with rendered markdown output
-- **Sports Science Context** — Every prompt is enriched with TRIMP, ACWR, zones, and physiology
+- **Llama 3.2 3B GGUF** — Fully offline inference via `llama.rn` v0.6.15; no API key, no internet
+- **Metal GPU Acceleration** — All model layers offloaded to the Metal GPU (`n_gpu_layers: -1`); ~10.7 tok/s on A-series vs ~5.1 tok/s CPU-only (2× speed-up). Falls back to CPU on unsupported hardware
+- **Streaming Chat** — Tokens accumulate in a ref and are flushed to the UI every 60 ms (~12 renders per reply vs one per token). Plain text is rendered during streaming; full Markdown is rendered once generation completes — keeps the UI smooth even at ~10 tok/s
+- **Lazy Model Loading** — The 3B model is loaded on first navigation to the Chat tab and stays resident in memory. Subsequent visits reuse the loaded context with no re-init overhead
+- **Sports Science Context** — Every prompt is enriched with TRIMP, ACWR, zones, and physiology; max response is 1 024 tokens
 - **Quick Prompt Chips** — One-tap presets: "What should I do today?", "Am I making progress?", etc.
 - **Summary Range Chips** — Ask for a weekly / 2-week / monthly / 3-month recap in one tap
 - **Prefill Navigation** — CoachBanner suggestions deep-link directly into the chat with the question pre-filled
@@ -188,6 +190,7 @@ All health and session data is encrypted at rest:
 | `crypto.getRandomValues` error      | `import 'react-native-get-random-values'` must be the **first** import in `index.js`  |
 | App opens empty after device restore | Expected — Keychain was cleared, DB key is gone. Recovery path recreates a fresh DB. |
 | AI chat shows "Error"               | Confirm `model_q4km.gguf` is in `ios/` and added to Xcode bundle resources            |
+| App black screen for ~10 s on launch | Debug build only — iOS times out trying to reach Metro Bundler. Start `npx react-native start` first, or build in Release mode (`--mode Release`) to embed the JS bundle |
 | `Promise.allSettled` TS error       | `tsconfig.json` `lib` must include `"es2020"` or later                                |
 | Infinite re-render (Zustand)        | Use `useShallow` for any selector returning an object                                 |
 | BLE scan not finding device         | Ensure Bluetooth permission granted; Polar H10 must be in pairing mode                |

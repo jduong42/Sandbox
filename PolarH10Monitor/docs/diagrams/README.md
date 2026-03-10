@@ -27,3 +27,4 @@ All diagrams use [Mermaid](https://mermaid.js.org/) syntax.
 | [07-ble-states.md](07-ble-states.md)               | State     | BLE manager states: Unknown → Ready → Scanning → Connected             |
 | [08-database-schema.md](08-database-schema.md)     | ER        | SQLite tables: sessions, summaries, schema_meta                        |
 | [09-data-flow.md](09-data-flow.md)                 | Flowchart | End-to-end: Polar H10 → BLE → SQLite → Analytics → AI coach            |
+| [10-llm-chat-streaming.md](10-llm-chat-streaming.md) | Sequence + State | LLM init guard, 60 ms token-batching pipeline, ChatMessage render states |
