@@ -62,36 +62,7 @@ function formatSessionTime(date: Date | string | undefined): string {
   return `${diffDays} days ago`;
 }
 
-// Dummy fallback shown when no real sessions exist
-const DUMMY_ACTIVITIES = [
-  {
-    id: 'dummy-1',
-    name: 'Morning Run',
-    time: '7:30 AM',
-    duration: '32 min',
-    calories: 245,
-    icon: '🏃',
-    color: '#3b82f6',
-  },
-  {
-    id: 'dummy-2',
-    name: 'Evening Ride',
-    time: 'Yesterday',
-    duration: '45 min',
-    calories: 312,
-    icon: '🚴',
-    color: '#22c55e',
-  },
-  {
-    id: 'dummy-3',
-    name: 'HIIT Training',
-    time: '2 days ago',
-    duration: '28 min',
-    calories: 198,
-    icon: '❤️',
-    color: '#ef4444',
-  },
-];
+
 
 export function FigmaHomeScreen() {
   const { c } = useTheme();
@@ -108,7 +79,7 @@ export function FigmaHomeScreen() {
       icon: string;
       color: string;
     }[]
-  >(DUMMY_ACTIVITIES);
+  >([]);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
 
   const loadRecentActivities = useCallback(async () => {
@@ -116,26 +87,24 @@ export function FigmaHomeScreen() {
       // Fetch the 5 most recent sessions directly from SQLite
       const all = await sessionRepository.getRecent(5);
 
-      if (all.length > 0) {
-        setRecentActivities(
-          all.map(s => {
-            const meta = activityMeta(String((s as any).type ?? ''));
-            const durationSec: number = (s as any).duration ?? 0;
-            const durationMin = Math.round(durationSec / 60);
-            return {
-              id: String((s as any).id),
-              name: (s as any).title ?? (s as any).type ?? 'Session',
-              time: formatSessionTime((s as any).date ?? (s as any).startTime),
-              duration: durationMin > 0 ? `${durationMin} min` : '--',
-              calories: Math.round((s as any).calories ?? 0),
-              icon: meta.icon,
-              color: meta.color,
-            };
-          }),
-        );
-      }
+      setRecentActivities(
+        all.map(s => {
+          const meta = activityMeta(String((s as any).type ?? ''));
+          const durationSec: number = (s as any).duration ?? 0;
+          const durationMin = Math.round(durationSec / 60);
+          return {
+            id: String((s as any).id),
+            name: (s as any).title ?? (s as any).type ?? 'Session',
+            time: formatSessionTime((s as any).date ?? (s as any).startTime),
+            duration: durationMin > 0 ? `${durationMin} min` : '--',
+            calories: Math.round((s as any).calories ?? 0),
+            icon: meta.icon,
+            color: meta.color,
+          };
+        }),
+      );
 
-      // Streak data from all merged sessions
+      // Streak data from all sessions
       setStreakData(calculateStreak(all as unknown as TrainingSession[]));
     } catch (e) {
       console.warn('[FigmaHomeScreen] failed to load sessions', e);
@@ -375,11 +344,24 @@ export function FigmaHomeScreen() {
             <Text style={[styles.sectionTitle, { color: c.foreground }]}>
               Recent Activities
             </Text>
-            <View style={styles.activitiesList}>
-              {recentActivities.map(activity => (
-                <RecentActivity key={activity.id} {...activity} />
-              ))}
-            </View>
+            {recentActivities.length === 0 ? (
+              <View
+                style={[
+                  styles.emptyActivities,
+                  { backgroundColor: c.surface, borderColor: c.border },
+                ]}
+              >
+                <Text style={[styles.emptyActivitiesText, { color: c.muted }]}>
+                  No sessions yet — record your first workout to see it here.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.activitiesList}>
+                {recentActivities.map(activity => (
+                  <RecentActivity key={activity.id} {...activity} />
+                ))}
+              </View>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -528,5 +510,17 @@ const styles = StyleSheet.create({
   disclaimerArrow: { fontSize: 22, fontWeight: '300' },
   activitiesList: {
     gap: 12,
+  },
+  emptyActivities: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  emptyActivitiesText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

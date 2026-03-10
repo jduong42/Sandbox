@@ -266,13 +266,23 @@ class DatabaseService {
     let rawDb = OPSQLite.open({ name: DB_NAME, location, encryptionKey });
 
     try {
+      // PRAGMA user_version reads page 1 of the DB file.  SQLCipher will throw
+      // 'file is not a database' here if the key doesn't match the file — this
+      // is more reliable than relying on CREATE TABLE to surface the mismatch.
+      await rawDb.execute('PRAGMA user_version;');
       for (const ddl of DDL_STATEMENTS) {
         await rawDb.execute(ddl);
       }
     } catch (ddlErr) {
       // Key/file mismatch — delete the stale encrypted file and start fresh.
-      logger.warn('[DatabaseService] Schema DDL failed — recreating DB', { ddlErr });
-      try { rawDb.delete(location); } catch {}
+      logger.warn('[DatabaseService] Schema DDL failed — recreating DB', {
+        ddlErr,
+      });
+      try {
+        // Call delete() with no args so op-sqlite uses the location it stored
+        // at open() time — avoids path-format mismatches.
+        rawDb.delete();
+      } catch {}
       rawDb = OPSQLite.open({ name: DB_NAME, location, encryptionKey });
       for (const ddl of DDL_STATEMENTS) {
         await rawDb.execute(ddl);
@@ -291,12 +301,11 @@ class DatabaseService {
    * After this call, `initialize()` will create a fresh empty database.
    */
   async closeAndDelete(): Promise<void> {
-    const location =
-      Platform.OS === 'ios' ? IOS_LIBRARY_PATH : ANDROID_DATABASE_PATH;
     if (this._db) {
       try {
-        // db.delete(location) closes the connection AND removes the file.
-        this._db.delete(location);
+        // Call delete() with no args so op-sqlite uses the location it stored
+        // at open() time — avoids path-format mismatches with IOS_LIBRARY_PATH.
+        this._db.delete();
       } catch (e) {
         logger.warn('[DatabaseService] Failed to delete DB file', { e });
       }
@@ -315,6 +324,18 @@ class DatabaseService {
       );
     }
     return this._db;
+  }
+
+  /**
+   * DEV ONLY — nulls the in-memory handle without touching the file.
+   * Used by DevScreen to simulate the stale-DB scenario (key deleted but file
+   * remains) so the recovery path in initialize() can be manually verified.
+   */
+  _simulateStaleForTest(): void {
+    if (__DEV__) {
+      try { this._db?.close(); } catch {}
+      this._db = null;
+    }
   }
 }
 

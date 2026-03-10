@@ -266,6 +266,44 @@ export function DevScreen() {
     );
   };
 
+  // ── simulate stale DB (recovery path test) ────────────────────────────────
+  // Deletes ONLY the SQLCipher key from Keychain, leaving the encrypted DB file
+  // on disk. On the NEXT app launch, DatabaseService.initialize() must detect the
+  // mismatch via the DDL try/catch and recreate the database cleanly.
+  const handleSimulateStaleDb = () => {
+    Alert.alert(
+      'Simulate stale DB?',
+      'Removes only the DB encryption key from Keychain — leaves the DB file on disk. Kills the in-memory handle. Relaunch the app to verify the recovery path fires and the app starts cleanly.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Simulate',
+          style: 'destructive',
+          onPress: async () => {
+            setBusy(true);
+            try {
+              // Null the singleton handle without deleting the file
+              await (databaseService as any)._simulateStaleForTest?.();
+              await EncryptedStorage.removeItem('polar_db_key_v1');
+              // Verify the key was actually deleted — helps diagnose if
+              // removeItem silently fails (data persisting after relaunch
+              // means the key was NOT removed).
+              const keyAfter = await EncryptedStorage.getItem('polar_db_key_v1');
+              Alert.alert(
+                'Stale DB simulated',
+                `DB file is still on disk.\nKey in Keychain after removeItem: ${
+                  keyAfter ? `STILL PRESENT (${keyAfter.slice(0, 8)}…)` : 'DELETED ✓'
+                }\n\nForce-quit and relaunch — you should see the recovery log and the app open cleanly with an empty DB.`,
+              );
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   // ── wipe encrypted storage entirely ──────────────────────────────────────
   const handleWipeEncryptedStorage = () => {
     Alert.alert(
@@ -279,11 +317,16 @@ export function DevScreen() {
           onPress: async () => {
             setBusy(true);
             try {
-              // Close + delete the DB file BEFORE clearing EncryptedStorage.
-              // If the key is wiped while the encrypted file remains on disk,
-              // the next launch would fail to open it (key/file mismatch).
+              // 1. Close + delete the DB file BEFORE clearing EncryptedStorage
+              //    so the key and file are never out of sync.
               await databaseService.closeAndDelete();
+              // 2. Clear all keychain items (including the DB key + user session).
               await EncryptedStorage.clear();
+              // 3. Re-initialize immediately with a fresh key so any still-mounted
+              //    screens (CoachBanner, HomeScreen) query an empty DB instead of
+              //    throwing "Database not initialized".
+              await databaseService.initialize();
+              // 4. Clear in-memory auth state.
               await logout();
               await refreshKeys();
             } finally {
@@ -344,6 +387,11 @@ export function DevScreen() {
           <ActionButton
             label="🔒  Wipe All EncryptedStorage"
             onPress={handleWipeEncryptedStorage}
+            danger
+          />
+          <ActionButton
+            label="🧪  Simulate Stale DB (recovery test)"
+            onPress={handleSimulateStaleDb}
             danger
           />
           <ActionButton

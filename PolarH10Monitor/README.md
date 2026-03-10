@@ -43,7 +43,8 @@ A React Native app for Polar H10 athletes — real-time heart rate monitoring, e
 
 - **Local Auth** — Sign up/log in (name, email, password) — no backend required
 - **Physiology Store** — Sex, age, height, weight, resting HR, max HR, activity level, body fat %
-- **AES-256 Encrypted Storage** — All session and device data encrypted at rest via `react-native-encrypted-storage` (iOS Keychain / Android EncryptedSharedPreferences) + AES-256 `crypto-js` layer
+- **SQLCipher Encrypted Database** — All training sessions and summaries stored in an encrypted SQLite database (`@op-engineering/op-sqlite` + SQLCipher). The 256-bit database key is generated once and stored in the OS secure store (iOS Keychain / Android EncryptedSharedPreferences) via `react-native-encrypted-storage`
+- **Crash-safe key/file recovery** — If the encryption key and DB file fall out of sync (device restore, Keychain wipe), `DatabaseService.initialize()` detects the mismatch, deletes the undecryptable file, and recreates a clean empty database — preventing a permanent crash loop
 
 ### UX
 
@@ -77,6 +78,9 @@ src/
 │   ├── FigmaAIChatScreen.tsx    # LLM chat with chips, prefill, streaming
 │   └── …
 ├── services/
+│   ├── DatabaseService.ts         # SQLCipher DB lifecycle — open, DDL, migration, recovery
+│   ├── SessionRepository.ts       # CRUD operations against the sessions table
+│   ├── SummaryComputeService.ts   # Derives ACWR / streak / zone summaries from raw rows
 │   ├── BLEService.ts
 │   ├── SessionRecordingService.ts
 │   ├── TrainingContextService.ts  # Builds enriched prompt context block
@@ -108,9 +112,9 @@ src/
 | ------------------------------------------- | ----------------------------------- |
 | `react-native-ble-plx`                      | Bluetooth LE (Polar H10)            |
 | `llama.rn`                                  | On-device LLM inference (GGUF)      |
+| `@op-engineering/op-sqlite`                 | SQLite engine with SQLCipher        |
 | `zustand`                                   | State management                    |
-| `react-native-encrypted-storage`            | OS-level secure storage             |
-| `crypto-js`                                 | AES-256 encryption layer            |
+| `react-native-encrypted-storage`            | OS-level secure storage (DB key)    |
 | `react-native-get-random-values`            | `crypto.getRandomValues()` polyfill |
 | `@react-native-async-storage/async-storage` | Storage fallback                    |
 | `react-navigation`                          | Stack + bottom-tab navigation       |
@@ -135,6 +139,8 @@ npm install
 bundle install          # first clone only
 bundle exec pod install
 ```
+
+> SQLCipher is enabled via `"op-sqlite": { "sqlcipher": true }` in `package.json`. CocoaPods picks this up automatically — no extra steps needed.
 
 ### 3. Start Metro
 
@@ -168,11 +174,10 @@ The AI badge on the chat screen will show **"Ready"** once the model initialises
 
 All health and session data is encrypted at rest:
 
-- **Primary**: `react-native-encrypted-storage` — backed by iOS Keychain or Android EncryptedSharedPreferences
-- **Layer 2**: AES-256 via `crypto-js` on every value before it reaches the OS store
-- **Keys encrypted**: `sessions_history`, `seeded_training_sessions`, `active_recording_session`, `@device_history`
-
-Simulator environments fall back to AsyncStorage automatically (encrypted values remain AES-256 wrapped).
+- **Database**: `@op-engineering/op-sqlite` compiled with SQLCipher — the entire `.db` file is AES-256 encrypted at the page level
+- **Encryption key**: a 32-byte random hex key generated on first launch, stored in the OS secure enclave via `react-native-encrypted-storage` (iOS Keychain / Android EncryptedSharedPreferences) under the key `polar_db_key_v1`
+- **Key/file recovery**: if the Keychain is cleared without deleting the DB file (device restore, iCloud restore), `DatabaseService` detects the mismatch on the first SQL operation, deletes the undecryptable file, and recreates the schema — the app stays functional instead of crash-looping
+- **Auth tokens**: user session data stored via `react-native-encrypted-storage` (never in plain AsyncStorage)
 
 ---
 
@@ -180,12 +185,13 @@ Simulator environments fall back to AsyncStorage automatically (encrypted values
 
 | Issue                               | Fix                                                                                  |
 | ----------------------------------- | ------------------------------------------------------------------------------------ |
-| `crypto.getRandomValues` error      | `import 'react-native-get-random-values'` must be the **first** import in `index.js` |
-| EncryptedStorage fails on simulator | Expected — app falls back to AsyncStorage; values remain AES-256 encrypted           |
-| AI chat shows "Error"               | Confirm `model_q4km.gguf` is in `ios/` and added to Xcode bundle resources           |
-| `Promise.allSettled` TS error       | `tsconfig.json` `lib` must include `"es2020"` or later                               |
-| Infinite re-render (Zustand)        | Use `useShallow` for any selector returning an object                                |
-| BLE scan not finding device         | Ensure Bluetooth permission granted; Polar H10 must be in pairing mode               |
+| `crypto.getRandomValues` error      | `import 'react-native-get-random-values'` must be the **first** import in `index.js`  |
+| App opens empty after device restore | Expected — Keychain was cleared, DB key is gone. Recovery path recreates a fresh DB. |
+| AI chat shows "Error"               | Confirm `model_q4km.gguf` is in `ios/` and added to Xcode bundle resources            |
+| `Promise.allSettled` TS error       | `tsconfig.json` `lib` must include `"es2020"` or later                                |
+| Infinite re-render (Zustand)        | Use `useShallow` for any selector returning an object                                 |
+| BLE scan not finding device         | Ensure Bluetooth permission granted; Polar H10 must be in pairing mode                |
+| SQLCipher not compiling             | Confirm `"op-sqlite": { "sqlcipher": true }` is in `package.json`, then re-run `pod install` |
 
 ---
 
