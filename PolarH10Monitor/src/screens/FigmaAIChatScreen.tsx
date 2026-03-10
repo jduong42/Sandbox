@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { figmaTheme as t } from '../theme/figmaTheme';
 import { ChatMessage, Message } from '../components/figma/ChatMessage';
 import { ModelBadge } from '../components/figma/ModelBadge';
@@ -22,6 +23,38 @@ import { useTheme } from '../theme/ThemeContext';
 
 const MODEL_DISPLAY_NAME = 'Llama 3.2 3B - Sports Science';
 
+const QUICK_PROMPTS = [
+  'What should I do today?',
+  'Am I making progress?',
+  'I feel tired — should I rest?',
+  'Help me plan this week',
+  'What does my ACWR mean?',
+  'How can I improve my endurance?',
+];
+
+const SUMMARY_RANGES = [
+  {
+    label: 'This week',
+    prompt:
+      'Summarise my training for this week. What patterns do you notice? What is going well and what should I focus on?',
+  },
+  {
+    label: 'Last 2 weeks',
+    prompt:
+      'Summarise my training for the last 2 weeks. What trends do you see in my load and consistency? What would you recommend?',
+  },
+  {
+    label: 'This month',
+    prompt:
+      'Give me a monthly training summary. How has my fitness load changed? Am I progressing, maintaining, or at risk?',
+  },
+  {
+    label: 'Last 3 months',
+    prompt:
+      'Summarise my training over the last 3 months. What are the biggest patterns you see? Where should I focus my energy going forward?',
+  },
+];
+
 const INITIAL_MESSAGE: Message = {
   id: 0,
   role: 'assistant',
@@ -31,6 +64,9 @@ const INITIAL_MESSAGE: Message = {
 
 export function FigmaAIChatScreen() {
   const { c } = useTheme();
+  const route =
+    useRoute<RouteProp<{ FigmaAIChat: { prefill?: string } }, 'FigmaAIChat'>>();
+  const prefill = (route.params as any)?.prefill as string | undefined;
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [inputValue, setInputValue] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -39,6 +75,23 @@ export function FigmaAIChatScreen() {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const nextId = useRef(1);
+  const prefillSent = useRef(false);
+
+  // Auto-send prefill once model is ready (handles both "model already ready"
+  // and "model still initialising when navigation happens" cases)
+  useEffect(() => {
+    if (prefill && isModelReady && !prefillSent.current) {
+      prefillSent.current = true;
+      handleSend(prefill);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill, isModelReady]);
+
+  // Reset sent-guard if a new prefill arrives (e.g. user taps banner again)
+  useEffect(() => {
+    prefillSent.current = false;
+    if (prefill) setInputValue(prefill);
+  }, [prefill]);
 
   useEffect(() => {
     llamaTextGenerationService
@@ -60,17 +113,12 @@ export function FigmaAIChatScreen() {
     );
   };
 
-  // The model generates only the JSON answer value (prompt primes with `{"answer": "`)
-  // so we just need to close the string and extract it.
+  // The model generates only the JSON answer value; strip closing `"}` and unescape.
   const parseJsonResponse = (raw: string): string => {
-    // raw is everything the model generated after `{"answer": "`
-    // Strip the closing `"}` if present, then unescape JSON string sequences.
     const stripped = raw.replace(/"\s*\}\s*$/, '').trim();
     try {
-      // Wrap back into valid JSON and parse so \n, \\ etc are handled correctly
       return JSON.parse(`"${stripped}"`);
     } catch {
-      // Fallback: manual unescape of the most common sequences
       return stripped
         .replace(/\\n/g, '\n')
         .replace(/\\t/g, '\t')
@@ -79,90 +127,95 @@ export function FigmaAIChatScreen() {
     }
   };
 
-  const handleSend = async () => {
-    const text = inputValue.trim();
-    if (!text || isGenerating) return;
+  const handleSend = useCallback(
+    async (overrideText?: string) => {
+      const text = (overrideText ?? inputValue).trim();
+      if (!text || isGenerating) return;
 
-    const userMsg: Message = {
-      id: ++nextId.current,
-      role: 'user',
-      content: text,
-    };
+      const userMsg: Message = {
+        id: ++nextId.current,
+        role: 'user',
+        content: text,
+      };
 
-    // Insert assistant placeholder immediately so the user sees it start typing
-    const assistantId = ++nextId.current;
-    const assistantPlaceholder: Message = {
-      id: assistantId,
-      role: 'assistant',
-      content: '',
-      isStreaming: true,
-    };
+      const assistantId = ++nextId.current;
+      const assistantPlaceholder: Message = {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        isStreaming: true,
+      };
 
-    setMessages(prev => [...prev, userMsg, assistantPlaceholder]);
-    setInputValue('');
-    setIsGenerating(true);
-    scrollToBottom();
-
-    try {
-      // Build personalised context (TRIMP, ACWR, physiology) — fast, local only
-      const { contextBlock } = await trainingContextService.buildContext();
-      const prompt = createSportsPromptWithContext(text, contextBlock);
-      let accumulated = '';
-
-      const result = await llamaTextGenerationService.generateTextStreaming(
-        prompt,
-        {
-          maxTokens: 700,
-          temperature: 0.4,
-          stopTokens: ['"}', '<|im_end|>', '</s>'],
-        },
-        (token: string) => {
-          accumulated += token;
-          // Unescape \n sequences live so paragraphs render during streaming
-          const display = parseJsonResponse(accumulated);
-          setMessages(prev =>
-            prev.map(m =>
-              m.id === assistantId
-                ? { ...m, content: display, isStreaming: true }
-                : m,
-            ),
-          );
-          scrollToBottom();
-        },
-        text,
-      );
-
-      // Finalise message with the clean parsed response
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === assistantId
-            ? {
-                ...m,
-                content: result.success
-                  ? parseJsonResponse(result.generatedText)
-                  : "I'm having trouble responding right now. Please try again.",
-                isStreaming: false,
-              }
-            : m,
-        ),
-      );
-    } catch {
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === assistantId
-            ? {
-                ...m,
-                content: 'Sorry, I encountered an error. Please try again.',
-                isStreaming: false,
-              }
-            : m,
-        ),
-      );
-    } finally {
-      setIsGenerating(false);
+      setMessages(prev => [...prev, userMsg, assistantPlaceholder]);
+      if (!overrideText) setInputValue('');
+      setIsGenerating(true);
       scrollToBottom();
-    }
-  };
+
+      try {
+        const { contextBlock } =
+          await trainingContextService.buildContextForQuery(text);
+        const prompt = createSportsPromptWithContext(text, contextBlock);
+        let accumulated = '';
+
+        const result = await llamaTextGenerationService.generateTextStreaming(
+          prompt,
+          {
+            maxTokens: 700,
+            temperature: 0.4,
+            stopTokens: ['"}', '<|im_end|>', '</s>'],
+          },
+          (token: string) => {
+            accumulated += token;
+            const display = parseJsonResponse(accumulated);
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantId
+                  ? { ...m, content: display, isStreaming: true }
+                  : m,
+              ),
+            );
+            scrollToBottom();
+          },
+          text,
+        );
+
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  content: result.success
+                    ? parseJsonResponse(result.generatedText)
+                    : "I'm having trouble responding right now. Please try again.",
+                  isStreaming: false,
+                }
+              : m,
+          ),
+        );
+      } catch {
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  content: 'Sorry, I encountered an error. Please try again.',
+                  isStreaming: false,
+                }
+              : m,
+          ),
+        );
+      } finally {
+        setIsGenerating(false);
+        scrollToBottom();
+      }
+    },
+    [inputValue, isGenerating],
+  );
+
+  const handleQuickSend = useCallback(
+    (text: string) => handleSend(text),
+    [handleSend],
+  );
 
   return (
     <LinearGradient colors={c.background} style={styles.container}>
@@ -224,6 +277,60 @@ export function FigmaAIChatScreen() {
 
           {/* Input */}
           <View style={[styles.inputArea, { borderTopColor: c.border }]}>
+            {/* Summary period chips */}
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: c.muted }]}>
+                Summary:
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.chipScroll}
+              >
+                {SUMMARY_RANGES.map(r => (
+                  <TouchableOpacity
+                    key={r.label}
+                    style={[
+                      styles.summaryChip,
+                      { backgroundColor: c.surface, borderColor: c.border },
+                      (!isModelReady || isGenerating) && styles.chipDisabled,
+                    ]}
+                    onPress={() => handleQuickSend(r.prompt)}
+                    disabled={!isModelReady || isGenerating}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.summaryChipText, { color: c.muted }]}>
+                      {r.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Quick question chips */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipScroll}
+            >
+              {QUICK_PROMPTS.map(p => (
+                <TouchableOpacity
+                  key={p}
+                  style={[
+                    styles.quickChip,
+                    { backgroundColor: c.surface, borderColor: c.border },
+                    (!isModelReady || isGenerating) && styles.chipDisabled,
+                  ]}
+                  onPress={() => handleQuickSend(p)}
+                  disabled={!isModelReady || isGenerating}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.quickChipText, { color: c.foreground }]}>
+                    {p}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
             <View style={styles.inputRow}>
               <TextInput
                 style={[
@@ -241,7 +348,7 @@ export function FigmaAIChatScreen() {
                 multiline
                 editable={isModelReady && !isGenerating}
                 returnKeyType="send"
-                onSubmitEditing={handleSend}
+                onSubmitEditing={() => handleSend()}
                 blurOnSubmit={false}
               />
               <TouchableOpacity
@@ -250,7 +357,7 @@ export function FigmaAIChatScreen() {
                   (!inputValue.trim() || isGenerating || !isModelReady) &&
                     styles.sendBtnDisabled,
                 ]}
-                onPress={handleSend}
+                onPress={() => handleSend()}
                 disabled={!inputValue.trim() || isGenerating || !isModelReady}
                 activeOpacity={0.8}
               >
@@ -391,5 +498,45 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: t.spacing.sm,
     lineHeight: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  chipScroll: {
+    flexGrow: 0,
+    marginBottom: 8,
+  },
+  summaryChip: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    marginRight: 8,
+  },
+  summaryChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  quickChip: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    marginRight: 8,
+  },
+  quickChipText: {
+    fontSize: 13,
+  },
+  chipDisabled: {
+    opacity: 0.4,
   },
 });

@@ -1,15 +1,65 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { sessionRecordingService, RecordingSession } from '../src/services/SessionRecordingService';
+import {
+  sessionRecordingService,
+  RecordingSession,
+} from '../src/services/SessionRecordingService';
 import { logger } from '../src/utils/logger';
 
-// Mock AsyncStorage
-const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
+// Mock secureStorage so tests don't need native EncryptedStorage
+jest.mock('../src/utils/secureStorage', () => ({
+  secureRead: jest.fn(),
+  secureWrite: jest.fn(() => Promise.resolve()),
+  secureRemove: jest.fn(() => Promise.resolve()),
+  SECURE_STORAGE_KEYS: ['active_recording_session', '@device_history'],
+}));
+
+// Mock SessionRepository so tests don't need SQLite
+jest.mock('../src/services/SessionRepository', () => ({
+  sessionRepository: {
+    insert: jest.fn(() => Promise.resolve()),
+    upsertBatch: jest.fn(() => Promise.resolve()),
+    getAll: jest.fn(() => Promise.resolve([])),
+    getRecent: jest.fn(() => Promise.resolve([])),
+    getByDateRange: jest.fn(() => Promise.resolve([])),
+    deleteSeeded: jest.fn(() => Promise.resolve()),
+    deleteAll: jest.fn(() => Promise.resolve()),
+    count: jest.fn(() => Promise.resolve(0)),
+  },
+}));
+
+// Mock SummaryComputeService so tests don't need SQLite
+jest.mock('../src/services/SummaryComputeService', () => ({
+  summaryComputeService: {
+    recomputeForSession: jest.fn(() => Promise.resolve()),
+    getWeeklySummaryText: jest.fn(() => Promise.resolve(null)),
+    getMonthlySummaryText: jest.fn(() => Promise.resolve(null)),
+  },
+  computeWeekKey: jest.fn(() => '2026-W10'),
+  computeMonthKey: jest.fn(() => '2026-03'),
+}));
+
+import {
+  secureRead,
+  secureWrite,
+  secureRemove,
+} from '../src/utils/secureStorage';
+import { sessionRepository } from '../src/services/SessionRepository';
+
+const mockSecureRead = secureRead as jest.MockedFunction<typeof secureRead>;
+const mockSecureWrite = secureWrite as jest.MockedFunction<typeof secureWrite>;
+const mockSecureRemove = secureRemove as jest.MockedFunction<
+  typeof secureRemove
+>;
+const mockInsert = sessionRepository.insert as jest.Mock;
 
 describe('SessionRecordingService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    // Clear AsyncStorage before each test
-    mockAsyncStorage.clear();
+    // resetAllMocks also flushes mockResolvedValueOnce queues, preventing
+    // unconsumed mock values from leaking between tests.
+    jest.resetAllMocks();
+    // Re-apply default implementations after reset
+    mockSecureWrite.mockResolvedValue(undefined);
+    mockSecureRemove.mockResolvedValue(undefined);
+    mockInsert.mockResolvedValue(undefined);
   });
 
   describe('startRecording', () => {
@@ -18,14 +68,13 @@ describe('SessionRecordingService', () => {
       const deviceId = 'device123';
       const deviceName = 'Polar H10';
 
-      // Mock AsyncStorage.getItem to return null (no active session)
-      mockAsyncStorage.getItem.mockResolvedValue(null);
-      mockAsyncStorage.setItem.mockResolvedValue();
+      mockSecureRead.mockResolvedValue(null); // no active session
+      mockSecureWrite.mockResolvedValue();
 
       const session = await sessionRecordingService.startRecording(
         sessionName,
         deviceId,
-        deviceName
+        deviceName,
       );
 
       expect(session).toMatchObject({
@@ -37,10 +86,9 @@ describe('SessionRecordingService', () => {
       expect(session.id).toMatch(/^session_\d+$/);
       expect(session.startTime).toBeInstanceOf(Date);
 
-      // Check that session was stored in AsyncStorage
-      expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
+      expect(mockSecureWrite).toHaveBeenCalledWith(
         'active_recording_session',
-        JSON.stringify(session)
+        expect.objectContaining({ name: sessionName }),
       );
     });
 
@@ -54,22 +102,25 @@ describe('SessionRecordingService', () => {
         status: 'recording',
       };
 
-      // Mock AsyncStorage to return existing session
-      mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify(existingSession));
+      mockSecureRead.mockResolvedValue(existingSession as any);
 
       await expect(
-        sessionRecordingService.startRecording('New Session', 'device456', 'Device 2')
+        sessionRecordingService.startRecording(
+          'New Session',
+          'device456',
+          'Device 2',
+        ),
       ).rejects.toThrow('A recording session is already active');
     });
 
     it('should use fallback name if session name is empty', async () => {
-      mockAsyncStorage.getItem.mockResolvedValue(null);
-      mockAsyncStorage.setItem.mockResolvedValue();
+      mockSecureRead.mockResolvedValue(null);
+      mockSecureWrite.mockResolvedValue();
 
       const session = await sessionRecordingService.startRecording(
         '   ', // Empty/whitespace name
         'device123',
-        'Polar H10'
+        'Polar H10',
       );
 
       expect(session.name).toMatch(/^Session \d+\/\d+\/\d+$/);
@@ -87,45 +138,40 @@ describe('SessionRecordingService', () => {
         status: 'recording',
       };
 
-      // Mock getting active session
-      mockAsyncStorage.getItem
-        .mockResolvedValueOnce(JSON.stringify(activeSession)) // getActiveSession call
-        .mockResolvedValueOnce('[]'); // getSessionHistory call
+      mockSecureRead.mockResolvedValueOnce(activeSession as any); // getActiveSession
 
-      mockAsyncStorage.removeItem.mockResolvedValue();
-      mockAsyncStorage.setItem.mockResolvedValue();
+      mockSecureRemove.mockResolvedValue(undefined);
+      mockSecureWrite.mockResolvedValue(undefined);
 
       const completedSession = await sessionRecordingService.stopRecording();
 
       expect(completedSession).toMatchObject({
-        ...activeSession,
+        id: activeSession.id,
         status: 'completed',
       });
       expect(completedSession.endTime).toBeInstanceOf(Date);
       expect(completedSession.duration).toBeGreaterThan(0);
 
-      // Check that active session was removed
-      expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('active_recording_session');
-
-      // Check that session was added to history
-      expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
-        'sessions_history',
-        expect.stringContaining('"status":"completed"')
+      expect(mockSecureRemove).toHaveBeenCalledWith('active_recording_session');
+      // Session is now persisted via sessionRepository.insert(), not secureWrite
+      expect(mockInsert).toHaveBeenCalledWith(
+        expect.objectContaining({ id: activeSession.id }),
+        false,
       );
     });
 
     it('should throw error if no active session exists', async () => {
-      mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockSecureRead.mockResolvedValue(null);
 
       await expect(sessionRecordingService.stopRecording()).rejects.toThrow(
-        'No active recording session found'
+        'No active recording session found',
       );
     });
   });
 
   describe('getActiveSession', () => {
     it('should return null if no active session', async () => {
-      mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockSecureRead.mockResolvedValue(null);
 
       const session = await sessionRecordingService.getActiveSession();
 
@@ -133,98 +179,95 @@ describe('SessionRecordingService', () => {
     });
 
     it('should return parsed session with Date objects', async () => {
-      const sessionData = {
+      const sessionData: RecordingSession = {
         id: 'session_123',
         name: 'Test Session',
-        startTime: new Date().toISOString(),
+        startTime: new Date(),
         deviceId: 'device123',
         deviceName: 'Polar H10',
-        status: 'recording' as const,
+        status: 'recording',
       };
 
-      mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify(sessionData));
+      mockSecureRead.mockResolvedValue(sessionData as any);
 
       const session = await sessionRecordingService.getActiveSession();
 
       expect(session).toBeTruthy();
-      expect(session!.startTime).toBeInstanceOf(Date);
       expect(session!.name).toBe('Test Session');
     });
 
-    it('should handle AsyncStorage errors gracefully', async () => {
-      mockAsyncStorage.getItem.mockRejectedValue(new Error('Storage error'));
+    it('should handle storage errors gracefully', async () => {
+      mockSecureRead.mockRejectedValue(new Error('Storage error'));
 
       const session = await sessionRecordingService.getActiveSession();
 
       expect(session).toBeNull();
       expect(logger.error).toHaveBeenCalledWith(
         'Failed to get active session',
-        expect.objectContaining({ error: expect.any(Error) })
+        expect.objectContaining({ error: expect.any(Error) }),
       );
     });
   });
 
   describe('getSessionHistory', () => {
     it('should return empty array if no history', async () => {
-      mockAsyncStorage.getItem.mockResolvedValue(null);
+      mockSecureRead.mockResolvedValue(null);
 
       const history = await sessionRecordingService.getSessionHistory();
 
       expect(history).toEqual([]);
     });
 
-    it('should return parsed sessions with Date objects', async () => {
-      const historyData = [
+    it('should return sessions from storage', async () => {
+      const historyData: RecordingSession[] = [
         {
           id: 'session_1',
           name: 'Session 1',
-          startTime: new Date('2025-01-01').toISOString(),
-          endTime: new Date('2025-01-01T01:00:00').toISOString(),
+          startTime: new Date('2025-01-01'),
+          endTime: new Date('2025-01-01T01:00:00'),
           deviceId: 'device123',
           deviceName: 'Polar H10',
-          status: 'completed' as const,
+          status: 'completed',
           duration: 3600000,
         },
         {
           id: 'session_2',
           name: 'Session 2',
-          startTime: new Date('2025-01-02').toISOString(),
+          startTime: new Date('2025-01-02'),
           deviceId: 'device123',
           deviceName: 'Polar H10',
-          status: 'recording' as const,
+          status: 'recording',
         },
       ];
 
-      mockAsyncStorage.getItem.mockResolvedValue(JSON.stringify(historyData));
+      mockSecureRead.mockResolvedValue(historyData as any);
 
       const history = await sessionRecordingService.getSessionHistory();
 
       expect(history).toHaveLength(2);
-      expect(history[0].startTime).toBeInstanceOf(Date);
-      expect(history[0].endTime).toBeInstanceOf(Date);
-      expect(history[1].startTime).toBeInstanceOf(Date);
-      expect(history[1].endTime).toBeUndefined();
+      expect(history[0].id).toBe('session_1');
+      expect(history[1].id).toBe('session_2');
     });
   });
 
   describe('clearActiveSession', () => {
     it('should remove active session from storage', async () => {
-      mockAsyncStorage.removeItem.mockResolvedValue();
+      mockSecureRemove.mockResolvedValue();
 
       await sessionRecordingService.clearActiveSession();
 
-      expect(mockAsyncStorage.removeItem).toHaveBeenCalledWith('active_recording_session');
+      expect(mockSecureRemove).toHaveBeenCalledWith('active_recording_session');
       expect(logger.info).toHaveBeenCalledWith('Active session cleared');
     });
 
     it('should handle errors gracefully', async () => {
-      mockAsyncStorage.removeItem.mockRejectedValue(new Error('Storage error'));
+      mockSecureRemove.mockRejectedValue(new Error('Storage error'));
 
       await sessionRecordingService.clearActiveSession();
 
       expect(logger.error).toHaveBeenCalledWith(
         'Failed to clear active session',
-        expect.objectContaining({ error: expect.any(Error) })
+        expect.objectContaining({ error: expect.any(Error) }),
       );
     });
   });

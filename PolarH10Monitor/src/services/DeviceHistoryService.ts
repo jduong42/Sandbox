@@ -72,15 +72,20 @@ class DeviceHistoryService {
    */
   async getDevices(): Promise<StoredDevice[]> {
     try {
-      const devices = await secureRead<StoredDevice[]>(DeviceHistoryService.STORAGE_KEY) ?? [];
+      const devices =
+        (await secureRead<StoredDevice[]>(DeviceHistoryService.STORAGE_KEY)) ??
+        [];
       if (devices.length === 0) {
         logger.info('DeviceHistoryService: No stored data found');
         return [];
       }
-      
+
       logger.info('DeviceHistoryService: Retrieved devices from storage', {
         deviceCount: devices.length,
-        deviceNames: devices.map(d => ({ id: d.id.substring(0, 8), name: d.name || 'NO_NAME' })),
+        deviceNames: devices.map(d => ({
+          id: d.id.substring(0, 8),
+          name: d.name || 'NO_NAME',
+        })),
       });
 
       // Sort by last connected date (most recent first)

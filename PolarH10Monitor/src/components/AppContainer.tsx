@@ -9,6 +9,7 @@ import SplashScreen from '../screens/SplashScreen';
 import { theme } from '../theme';
 import { ThemeProvider } from '../theme/ThemeContext';
 import { AuthProvider } from '../context/AuthContext';
+import { databaseService } from '../services/DatabaseService';
 
 const AppContainer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -19,9 +20,9 @@ const AppContainer: React.FC = () => {
     // Simulate app initialization
     const initializeApp = async () => {
       try {
-        // Add any initialization logic here
-        // e.g., loading user preferences, checking auth state, etc.
-        await new Promise<void>(resolve => setTimeout(() => resolve(), 1000)); // Simulate loading
+        // Initialise encrypted SQLite database (creates schema + runs migration
+        // from EncryptedStorage on first launch after update).
+        await databaseService.initialize();
         setIsAppReady(true);
       } catch (error) {
         console.error('App initialization error:', error);

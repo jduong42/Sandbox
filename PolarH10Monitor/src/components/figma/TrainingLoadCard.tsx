@@ -8,13 +8,10 @@ import {
   ACWRRisk,
 } from '../../utils/ACWRCalculator';
 import { TrainingLoadModal } from './TrainingLoadModal';
-import { secureRead } from '../../utils/secureStorage';
-import { SEEDED_SESSIONS_KEY } from '../../services/TrainingContextService';
+import { sessionRepository } from '../../services/SessionRepository';
 import { AnalyticsService } from '../../services/AnalyticsService';
 import { usePhysiologyStore } from '../../store/physiologyStore';
 import type { TrainingSession } from '../../types/training';
-
-const SESSIONS_HISTORY_KEY = 'sessions_history';
 
 const RISK_COLOR: Record<ACWRRisk, string> = {
   detraining: '#60a5fa',
@@ -44,19 +41,8 @@ export function TrainingLoadCard() {
     let active = true;
     async function load() {
       try {
-        const [real, seeded] = await Promise.all([
-          secureRead<TrainingSession[]>(SESSIONS_HISTORY_KEY).then(v => v ?? []),
-          secureRead<TrainingSession[]>(SEEDED_SESSIONS_KEY).then(v => v ?? []),
-        ]);
-
-        // Merge and deduplicate by id
-        const seen = new Set<string>();
-        const all = [...real, ...seeded].filter(s => {
-          const key = String((s as any).id);
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+        // 28 days is the ACWR chronic window — no need to load the full history
+        const all = await sessionRepository.getRecent(28);
 
         // Enrich with TRIMP using current physiology profile
         const age = physiology?.ageYears ?? 30;

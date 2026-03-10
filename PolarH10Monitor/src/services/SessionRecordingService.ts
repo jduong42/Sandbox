@@ -1,6 +1,9 @@
 import { secureRead, secureWrite, secureRemove } from '../utils/secureStorage';
 import { logger } from '../utils/logger';
 import { bleService } from './BLEService';
+import { sessionRepository } from './SessionRepository';
+import { summaryComputeService } from './SummaryComputeService';
+import type { TrainingSession } from '../types/training';
 
 export interface RecordingSession {
   id: string;
@@ -90,7 +93,7 @@ class SessionRecordingService {
       // Remove from active sessions
       await secureRemove(this.ACTIVE_SESSION_KEY);
 
-      // Add to session history
+      // Persist to SQLite (no size cap)
       await this.addToHistory(completedSession);
 
       logger.info('Recording session stopped successfully', {
@@ -110,7 +113,9 @@ class SessionRecordingService {
    */
   async getActiveSession(): Promise<RecordingSession | null> {
     try {
-      const session = await secureRead<RecordingSession>(this.ACTIVE_SESSION_KEY);
+      const session = await secureRead<RecordingSession>(
+        this.ACTIVE_SESSION_KEY,
+      );
       if (!session) return null;
 
       // Convert date strings back to Date objects
@@ -131,7 +136,8 @@ class SessionRecordingService {
    */
   async getSessionHistory(): Promise<RecordingSession[]> {
     try {
-      const sessions = await secureRead<RecordingSession[]>(this.SESSIONS_HISTORY_KEY) ?? [];
+      const sessions =
+        (await secureRead<RecordingSession[]>(this.SESSIONS_HISTORY_KEY)) ?? [];
       // Convert date strings back to Date objects
       return sessions.map((session: RecordingSession) => ({
         ...session,
@@ -157,17 +163,29 @@ class SessionRecordingService {
   }
 
   /**
-   * Add session to history
+   * Add session to SQLite history and recompute summaries.
+   * The RecordingSession is stored as-is; downstream analytics (TRIMP etc.)
+   * are enriched by TrainingContextService when the session is read back.
    */
   private async addToHistory(session: RecordingSession): Promise<void> {
     try {
-      const existingHistory = await this.getSessionHistory();
-      const updatedHistory = [session, ...existingHistory];
-
-      // Keep only last 50 sessions to avoid storage bloat
-      const limitedHistory = updatedHistory.slice(0, 50);
-
-      await secureWrite(this.SESSIONS_HISTORY_KEY, limitedHistory);
+      // Map RecordingSession → TrainingSession (minimal field set)
+      const ts: TrainingSession = {
+        id: session.id,
+        userId: '',
+        date: session.endTime ?? session.startTime,
+        startTime: session.startTime,
+        endTime: session.endTime ?? session.startTime,
+        duration: session.duration ? Math.round(session.duration / 1000) : 0,
+        type: 'running' as any, // Default — user can edit later
+        averageHeartRate: 0,
+        maxHeartRate: 0,
+        minHeartRate: 0,
+        heartRateData: [],
+        zoneSummary: [],
+      };
+      await sessionRepository.insert(ts, false);
+      await summaryComputeService.recomputeForSession(ts);
     } catch (error) {
       logger.error('Failed to add session to history', { error });
     }

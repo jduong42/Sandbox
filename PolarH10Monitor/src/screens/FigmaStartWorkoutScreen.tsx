@@ -16,12 +16,9 @@ import {
 } from '../components/figma/TrainingSessionCard';
 import { StartSessionModal } from '../components/figma/StartSessionModal';
 import { useTheme } from '../theme/ThemeContext';
-import { secureRead } from '../utils/secureStorage';
+import { sessionRepository } from '../services/SessionRepository';
 import { useFocusEffect } from '@react-navigation/native';
-import { SEEDED_SESSIONS_KEY } from '../services/TrainingContextService';
 import type { TrainingSession as StoredSession } from '../types/training';
-
-const SESSIONS_HISTORY_KEY = 'sessions_history';
 
 function formatType(type: string): string {
   return (type ?? 'Session')
@@ -76,32 +73,7 @@ export function FigmaStartWorkoutScreen() {
 
   const loadSessions = useCallback(async () => {
     try {
-      const [real, seeded] = await Promise.all([
-        secureRead<StoredSession[]>(SESSIONS_HISTORY_KEY).then(v => v ?? []),
-        secureRead<StoredSession[]>(SEEDED_SESSIONS_KEY).then(v => v ?? []),
-      ]);
-
-      // merge, deduplicate by id, newest first
-      const seen = new Set<string>();
-      const merged = [...real, ...seeded]
-        .filter(s => {
-          const key = String((s as any).id);
-          if (seen.has(key)) {
-            return false;
-          }
-          seen.add(key);
-          return true;
-        })
-        .sort((a, b) => {
-          const da = new Date(
-            (a as any).startTime ?? (a as any).date ?? 0,
-          ).getTime();
-          const db = new Date(
-            (b as any).startTime ?? (b as any).date ?? 0,
-          ).getTime();
-          return db - da;
-        });
-
+      const merged = await sessionRepository.getRecent(50);
       setSessions(merged.map(toCardSession));
     } catch (e) {
       console.warn('[WorkoutScreen] failed to load sessions', e);

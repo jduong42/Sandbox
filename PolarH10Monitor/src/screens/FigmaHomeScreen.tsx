@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -8,11 +9,12 @@ import {
   SafeAreaView,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { secureRead } from '../utils/secureStorage';
 import { ActivityRing } from '../components/figma/ActivityRing';
 import { StatCard } from '../components/figma/StatCard';
 import { RecentActivity } from '../components/figma/RecentActivity';
 import { TrainingLoadCard } from '../components/figma/TrainingLoadCard';
+import { CoachBanner } from '../components/figma/CoachBanner';
+import { StreakCard } from '../components/figma/StreakCard';
 import { useTheme } from '../theme/ThemeContext';
 import { getRestingCaloriesToday, getTDEE } from '../utils/CalorieCalculator';
 import { ProfileModal } from '../components/figma/ProfileModal';
@@ -23,9 +25,9 @@ import {
   toUserProfile,
 } from '../store/physiologyStore';
 import type { TrainingSession } from '../types/training';
-import { SEEDED_SESSIONS_KEY } from '../services/TrainingContextService';
-
-const SESSIONS_HISTORY_KEY = 'sessions_history';
+import { sessionRepository } from '../services/SessionRepository';
+import { calculateStreak } from '../utils/StreakCalculator';
+import type { StreakData } from '../utils/StreakCalculator';
 
 // Icon + colour by TrainingType string
 function activityMeta(type: string): { icon: string; color: string } {
@@ -60,100 +62,50 @@ function formatSessionTime(date: Date | string | undefined): string {
   return `${diffDays} days ago`;
 }
 
-// Dummy fallback shown when no real sessions exist
-const DUMMY_ACTIVITIES = [
-  {
-    id: 'dummy-1',
-    name: 'Morning Run',
-    time: '7:30 AM',
-    duration: '32 min',
-    calories: 245,
-    icon: '🏃',
-    color: '#3b82f6',
-  },
-  {
-    id: 'dummy-2',
-    name: 'Evening Ride',
-    time: 'Yesterday',
-    duration: '45 min',
-    calories: 312,
-    icon: '🚴',
-    color: '#22c55e',
-  },
-  {
-    id: 'dummy-3',
-    name: 'HIIT Training',
-    time: '2 days ago',
-    duration: '28 min',
-    calories: 198,
-    icon: '❤️',
-    color: '#ef4444',
-  },
-];
+
 
 export function FigmaHomeScreen() {
   const { c } = useTheme();
   const { user } = useAuth();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const { settings, isLoaded, initialize } = usePhysiologyStore();
-  const [recentActivities, setRecentActivities] =
-    useState<
-      {
-        id: string;
-        name: string;
-        time: string;
-        duration: string;
-        calories: number;
-        icon: string;
-        color: string;
-      }[]
-    >(DUMMY_ACTIVITIES);
+  const [recentActivities, setRecentActivities] = useState<
+    {
+      id: string;
+      name: string;
+      time: string;
+      duration: string;
+      calories: number;
+      icon: string;
+      color: string;
+    }[]
+  >([]);
+  const [streakData, setStreakData] = useState<StreakData | null>(null);
 
   const loadRecentActivities = useCallback(async () => {
     try {
-      const [real, seeded] = await Promise.all([
-        secureRead<TrainingSession[]>(SESSIONS_HISTORY_KEY).then(v => v ?? []),
-        secureRead<TrainingSession[]>(SEEDED_SESSIONS_KEY).then(v => v ?? []),
-      ]);
+      // Fetch the 5 most recent sessions directly from SQLite
+      const all = await sessionRepository.getRecent(5);
 
-      // Merge, deduplicate by id, sort by date desc
-      const seen = new Set<string>();
-      const all = [...real, ...seeded]
-        .filter(s => {
-          const key = String((s as any).id);
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        })
-        .sort((a, b) => {
-          const da = new Date(
-            (a as any).date ?? (a as any).startTime ?? 0,
-          ).getTime();
-          const db = new Date(
-            (b as any).date ?? (b as any).startTime ?? 0,
-          ).getTime();
-          return db - da;
-        })
-        .slice(0, 5);
+      setRecentActivities(
+        all.map(s => {
+          const meta = activityMeta(String((s as any).type ?? ''));
+          const durationSec: number = (s as any).duration ?? 0;
+          const durationMin = Math.round(durationSec / 60);
+          return {
+            id: String((s as any).id),
+            name: (s as any).title ?? (s as any).type ?? 'Session',
+            time: formatSessionTime((s as any).date ?? (s as any).startTime),
+            duration: durationMin > 0 ? `${durationMin} min` : '--',
+            calories: Math.round((s as any).calories ?? 0),
+            icon: meta.icon,
+            color: meta.color,
+          };
+        }),
+      );
 
-      if (all.length > 0) {
-        setRecentActivities(
-          all.map(s => {
-            const meta = activityMeta(String((s as any).type ?? ''));
-            const durationSec: number = (s as any).duration ?? 0;
-            const durationMin = Math.round(durationSec / 60);
-            return {
-              id: String((s as any).id),
-              name: (s as any).title ?? (s as any).type ?? 'Session',
-              time: formatSessionTime((s as any).date ?? (s as any).startTime),
-              duration: durationMin > 0 ? `${durationMin} min` : '--',
-              calories: Math.round((s as any).calories ?? 0),
-              icon: meta.icon,
-              color: meta.color,
-            };
-          }),
-        );
-      }
+      // Streak data from all sessions
+      setStreakData(calculateStreak(all as unknown as TrainingSession[]));
     } catch (e) {
       console.warn('[FigmaHomeScreen] failed to load sessions', e);
     }
@@ -161,9 +113,15 @@ export function FigmaHomeScreen() {
 
   useEffect(() => {
     if (!isLoaded) initialize();
-    loadRecentActivities();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Reload sessions every time this tab comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadRecentActivities();
+    }, [loadRecentActivities]),
+  );
 
   const userProfile = useMemo(() => toUserProfile(settings), [settings]);
   const profileComplete = isPhysiologyComplete(settings);
@@ -221,6 +179,18 @@ export function FigmaHomeScreen() {
 
           <Text style={[styles.date, { color: c.muted }]}>{today}</Text>
 
+          {/* Coach Banner */}
+          <View style={[styles.section, { marginTop: 8 }]}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { color: c.foreground, marginBottom: 10 },
+              ]}
+            >
+              Today's Coaching
+            </Text>
+            <CoachBanner />
+          </View>
           {/* Calorie disclaimer — visible when physiology profile is incomplete */}
           {!profileComplete && (
             <TouchableOpacity
@@ -351,6 +321,16 @@ export function FigmaHomeScreen() {
             </View>
           </View>
 
+          {/* Streak & Milestones */}
+          {streakData && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: c.foreground }]}>
+                Consistency
+              </Text>
+              <StreakCard data={streakData} />
+            </View>
+          )}
+
           {/* Training Load */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: c.foreground }]}>
@@ -364,11 +344,24 @@ export function FigmaHomeScreen() {
             <Text style={[styles.sectionTitle, { color: c.foreground }]}>
               Recent Activities
             </Text>
-            <View style={styles.activitiesList}>
-              {recentActivities.map(activity => (
-                <RecentActivity key={activity.id} {...activity} />
-              ))}
-            </View>
+            {recentActivities.length === 0 ? (
+              <View
+                style={[
+                  styles.emptyActivities,
+                  { backgroundColor: c.surface, borderColor: c.border },
+                ]}
+              >
+                <Text style={[styles.emptyActivitiesText, { color: c.muted }]}>
+                  No sessions yet — record your first workout to see it here.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.activitiesList}>
+                {recentActivities.map(activity => (
+                  <RecentActivity key={activity.id} {...activity} />
+                ))}
+              </View>
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -517,5 +510,17 @@ const styles = StyleSheet.create({
   disclaimerArrow: { fontSize: 22, fontWeight: '300' },
   activitiesList: {
     gap: 12,
+  },
+  emptyActivities: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  emptyActivitiesText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
