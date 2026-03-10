@@ -69,6 +69,13 @@ export function ChatMessage({ message }: ChatMessageProps) {
               <Text style={[styles.assistantText, { color: c.muted }]}>
                 Thinking<Text style={styles.cursor}>…</Text>
               </Text>
+            ) : message.isStreaming ? (
+              // Plain Text during streaming — Markdown parsing is too expensive
+              // on partial/incomplete content. Switch to Markdown when done.
+              <Text style={[styles.assistantText, { color: c.foreground }]}>
+                {message.content}
+                <Text style={styles.cursor}> ▌</Text>
+              </Text>
             ) : (
               <Markdown
                 style={{

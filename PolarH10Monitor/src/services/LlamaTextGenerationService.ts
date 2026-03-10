@@ -52,11 +52,12 @@ class LlamaTextGenerationService {
       // Create Llama context with optimized settings for mobile
       this.context = await initLlama({
         model: this.modelPath,
-        n_ctx: 4096, // Increased context window for longer conversations
-        n_threads: 4, // CPU threads (optimal for mobile)
-        n_batch: 256, // Increased batch size for better throughput
-        use_mlock: false, // Don't lock memory to RAM
-        use_mmap: true, // Use memory mapping for efficiency
+        n_ctx: 2048, // sufficient for context block + answer; smaller KV cache = faster init
+        n_threads: 6, // more CPU threads = faster prefill and decode
+        n_batch: 512, // larger batch = faster prompt processing (lower TTFT)
+        n_gpu_layers: -1, // offload all layers to Metal GPU on iOS (biggest speed win)
+        use_mlock: false, // don't lock memory to RAM
+        use_mmap: true, // use memory mapping for efficiency
       });
 
       if (!this.context) {

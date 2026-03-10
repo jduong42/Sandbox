@@ -76,6 +76,11 @@ export function FigmaAIChatScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const nextId = useRef(1);
   const prefillSent = useRef(false);
+  // Token batching — accumulate tokens in a ref; flush to state at 60 ms
+  // instead of on every single token (~300 → ~12 Markdown re-renders per reply).
+  const accumulatedRef = useRef('');
+  const assistantIdRef = useRef<number | null>(null);
+  const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Auto-send prefill once model is ready (handles both "model already ready"
   // and "model still initialising when navigation happens" cases)
@@ -104,6 +109,13 @@ export function FigmaAIChatScreen() {
         setInitError(String(err));
         setIsModelReady(false);
       });
+  }, []);
+
+  // Cancel any in-flight flush timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (flushTimerRef.current) clearInterval(flushTimerRef.current);
+    };
   }, []);
 
   const scrollToBottom = () => {
@@ -155,7 +167,22 @@ export function FigmaAIChatScreen() {
         const { contextBlock } =
           await trainingContextService.buildContextForQuery(text);
         const prompt = createSportsPromptWithContext(text, contextBlock);
-        let accumulated = '';
+        accumulatedRef.current = '';
+        assistantIdRef.current = assistantId;
+
+        // Batch token updates to ~16 fps — avoids a full Markdown re-render on
+        // every single token (~300 renders reduced to ~12 per reply).
+        flushTimerRef.current = setInterval(() => {
+          const display = parseJsonResponse(accumulatedRef.current);
+          setMessages(prev =>
+            prev.map(m =>
+              m.id === assistantIdRef.current
+                ? { ...m, content: display, isStreaming: true }
+                : m,
+            ),
+          );
+          scrollViewRef.current?.scrollToEnd({ animated: false });
+        }, 60);
 
         const result = await llamaTextGenerationService.generateTextStreaming(
           prompt,
@@ -165,19 +192,13 @@ export function FigmaAIChatScreen() {
             stopTokens: ['"}', '<|im_end|>', '</s>'],
           },
           (token: string) => {
-            accumulated += token;
-            const display = parseJsonResponse(accumulated);
-            setMessages(prev =>
-              prev.map(m =>
-                m.id === assistantId
-                  ? { ...m, content: display, isStreaming: true }
-                  : m,
-              ),
-            );
-            scrollToBottom();
+            accumulatedRef.current += token; // ref-only; no re-render per token
           },
           text,
         );
+
+        clearInterval(flushTimerRef.current);
+        flushTimerRef.current = null;
 
         setMessages(prev =>
           prev.map(m =>
@@ -193,6 +214,10 @@ export function FigmaAIChatScreen() {
           ),
         );
       } catch {
+        if (flushTimerRef.current) {
+          clearInterval(flushTimerRef.current);
+          flushTimerRef.current = null;
+        }
         setMessages(prev =>
           prev.map(m =>
             m.id === assistantId
