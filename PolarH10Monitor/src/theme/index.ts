@@ -16,6 +16,8 @@ import { errorBoundaryStyles } from './errorBoundary';
 import { logViewerScreenStyles } from './logViewerScreen';
 import { detailScreenStyles } from './detailScreen';
 import { modelSwitcherStyles } from './modelSwitcher';
+import { figmaStartSessionStyles } from './figmaStartSessionScreen';
+import { figmaStartWorkoutStyles } from './figmaStartWorkoutScreen';
 
 export const theme = {
   colors,
@@ -53,6 +55,8 @@ export {
   logViewerScreenStyles,
   detailScreenStyles,
   modelSwitcherStyles,
+  figmaStartSessionStyles,
+  figmaStartWorkoutStyles,
 };
 
 // Export types

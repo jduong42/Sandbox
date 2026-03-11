@@ -5,10 +5,10 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  StyleSheet,
   Alert,
 } from 'react-native';
 import { initialWindowMetrics } from 'react-native-safe-area-context';
+import { figmaStartSessionStyles as styles } from '../theme/figmaStartSessionScreen';
 import LinearGradient from 'react-native-linear-gradient';
 
 // The tab navigator below this stack screen sets bottom=0 in the RNSC context,
@@ -92,7 +92,10 @@ export function FigmaStartSessionScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: BOTTOM_INSET + 24 },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         automaticallyAdjustKeyboardInsets
@@ -155,116 +158,3 @@ export function FigmaStartSessionScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(51,65,85,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#ffffff',
-    textAlign: 'center',
-  },
-  headerSpacer: { width: 40 },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: BOTTOM_INSET + 24,
-  },
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#94a3b8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 14,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  chip: {
-    paddingHorizontal: 18,
-    paddingVertical: 13,
-    borderRadius: 12,
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  chipActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#a855f7',
-  },
-  chipText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#94a3b8',
-  },
-  chipTextActive: {
-    color: '#ffffff',
-    fontWeight: '600',
-  },
-  input: {
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: '#ffffff',
-    fontSize: 16,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 60,
-    borderTopWidth: 1,
-    borderTopColor: '#1e293b',
-  },
-  btnWrapper: {
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  btn: {
-    alignItems: 'center',
-    borderRadius: 14,
-    height: 64,
-    justifyContent: 'center',
-  },
-  btnDisabled: {
-    backgroundColor: '#1e293b',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  btnText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  btnTextDisabled: {
-    color: '#475569',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  StyleSheet,
   TouchableOpacity,
   SafeAreaView,
   Alert,
@@ -15,7 +14,6 @@ import {
   TrainingSessionCard,
   TrainingSession,
 } from '../components/figma/TrainingSessionCard';
-import { StartSessionModal } from '../components/figma/StartSessionModal';
 import { Toast } from '../components/common/Toast';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../theme/ThemeContext';
@@ -27,8 +25,8 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../context/AuthContext';
 import { useBLEScanning } from '../hooks/useBLEScanning';
 import type { TrainingSession as StoredSession } from '../types/training';
-import type { TrainingType } from '../types/training';
 import type { RootStackParamList } from '../navigation/NavigationTypes';
+import { figmaStartWorkoutStyles as styles } from '../theme/figmaStartWorkoutScreen';
 
 function formatType(type: string): string {
   return (type ?? 'Session')
@@ -234,97 +232,3 @@ export function FigmaStartWorkoutScreen() {
     </LinearGradient>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  date: {
-    fontSize: 14,
-    color: '#cbd5e1',
-  },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#a855f7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  section: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
-  },
-  sessionsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  sessionsCount: {
-    fontSize: 14,
-    color: '#cbd5e1',
-  },
-  sessionsList: {
-    gap: 12,
-  },
-  showMoreButton: {
-    marginTop: 16,
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.5)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  showMoreText: {
-    fontSize: 15,
-    color: '#e2e8f0',
-  },
-  chevron: {
-    fontSize: 12,
-    color: '#e2e8f0',
-  },
-  emptyState: {
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-});
