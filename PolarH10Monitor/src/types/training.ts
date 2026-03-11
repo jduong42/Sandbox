@@ -4,6 +4,7 @@
  * Types of cardio training sessions
  */
 export enum TrainingType {
+  // Running variants
   JOGGING = 'jogging',
   RUNNING = 'running',
   INTERVAL_TRAINING = 'interval_training',
@@ -11,6 +12,13 @@ export enum TrainingType {
   LONG_DISTANCE = 'long_distance',
   RECOVERY_RUN = 'recovery_run',
   FARTLEK = 'fartlek',
+  // Other activity types
+  CYCLING = 'cycling',
+  HIIT = 'hiit',
+  STRENGTH = 'strength',
+  YOGA = 'yoga',
+  SWIMMING = 'swimming',
+  WALKING = 'walking',
 }
 
 /**

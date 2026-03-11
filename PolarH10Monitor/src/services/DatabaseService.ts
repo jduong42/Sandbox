@@ -13,6 +13,7 @@
  * before any SessionRepository calls.
  */
 
+import 'react-native-get-random-values';
 import {
   OPSQLite,
   IOS_LIBRARY_PATH,
@@ -104,12 +105,7 @@ const DDL_STATEMENTS = [
 
 /**
  * Retrieves the SQLCipher encryption key from Keychain/Keystore,
- * generating and storing it on first launch.
- *
- * TODO: Replace Math.random() with crypto.getRandomValues once
- *       react-native-get-random-values is confirmed in the build.
- *       The key is Keychain-protected so even the current entropy is
- *       acceptable for a personal app.
+ * generating and storing it on first launch using crypto.getRandomValues.
  */
 async function getOrCreateDbKey(): Promise<string> {
   try {
@@ -119,10 +115,11 @@ async function getOrCreateDbKey(): Promise<string> {
     // EncryptedStorage unavailable on this device/simulator — fall through
   }
 
-  const bytes = Array.from({ length: 32 }, () =>
-    Math.floor(Math.random() * 256),
-  );
-  const key = bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const key = Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 
   try {
     await EncryptedStorage.setItem(DB_KEY_STORAGE, key);
@@ -333,7 +330,9 @@ class DatabaseService {
    */
   _simulateStaleForTest(): void {
     if (__DEV__) {
-      try { this._db?.close(); } catch {}
+      try {
+        this._db?.close();
+      } catch {}
       this._db = null;
     }
   }

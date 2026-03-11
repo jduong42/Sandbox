@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { sessionRecordingService, RecordingSession } from '../services';
 import { useBLEScanning } from './useBLEScanning';
 import { logger } from '../utils/logger';
+import { TrainingType } from '../types/training';
 
 export const useSessionRecording = () => {
   const [activeSession, setActiveSession] = useState<RecordingSession | null>(
@@ -68,16 +69,7 @@ export const useSessionRecording = () => {
   }, []);
 
   const startRecording = useCallback(
-    async (sessionName: string) => {
-      if (!isConnected || !connectedDevice) {
-        Alert.alert(
-          'Device Not Connected',
-          'Please connect to your Polar H10 device before starting a recording session.',
-          [{ text: 'OK' }],
-        );
-        return false;
-      }
-
+    async (sessionName: string, sessionType: TrainingType) => {
       if (activeSession) {
         Alert.alert(
           'Session Already Active',
@@ -100,8 +92,9 @@ export const useSessionRecording = () => {
       try {
         const session = await sessionRecordingService.startRecording(
           sessionName,
-          connectedDevice.id,
-          connectedDeviceName || connectedDevice.name,
+          sessionType,
+          connectedDevice?.id,
+          connectedDevice ? connectedDeviceName || connectedDevice.name : undefined,
         );
 
         setActiveSession(session);
@@ -128,7 +121,7 @@ export const useSessionRecording = () => {
         setIsLoading(false);
       }
     },
-    [isConnected, connectedDevice, connectedDeviceName, activeSession],
+    [connectedDevice, connectedDeviceName, activeSession],
   );
 
   const stopRecording = useCallback(async (): Promise<boolean> => {
@@ -247,7 +240,7 @@ export const useSessionRecording = () => {
     // Utilities
     formatDuration,
 
-    // Connection status
-    canStartRecording: isConnected && !activeSession,
+    // Connection status (informational — recording works without BLE)
+    canStartRecording: !activeSession,
   };
 };

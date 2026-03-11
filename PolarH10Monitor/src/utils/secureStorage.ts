@@ -12,22 +12,50 @@
  *     shipping to production.
  */
 
+import 'react-native-get-random-values';
 import EncryptedStorage from 'react-native-encrypted-storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CryptoJS from 'crypto-js';
 
 /**
- * App-level AES encryption key.
- * In production: inject via react-native-config / env vars at build time.
+ * Per-device AES encryption key.
+ * Generated once using crypto.getRandomValues, then persisted in the OS
+ * secure enclave (iOS Keychain / Android Keystore). Each device therefore
+ * has a unique key that is never embedded in the app binary.
  */
-const APP_SECRET = 'polar-h10-aes-key-v1-change-in-prod';
+const APP_SECRET_STORAGE_KEY = 'polar_app_secret_v1';
 
-function encrypt(plaintext: string): string {
-  return CryptoJS.AES.encrypt(plaintext, APP_SECRET).toString();
+let _cachedSecret: string | null = null;
+
+async function getAppSecret(): Promise<string> {
+  if (_cachedSecret) return _cachedSecret;
+  try {
+    const stored = await EncryptedStorage.getItem(APP_SECRET_STORAGE_KEY);
+    if (stored) {
+      _cachedSecret = stored;
+      return stored;
+    }
+  } catch {}
+
+  // Generate a 256-bit random key via the react-native-get-random-values polyfill
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const secret = Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  _cachedSecret = secret;
+  try {
+    await EncryptedStorage.setItem(APP_SECRET_STORAGE_KEY, secret);
+  } catch {}
+  return secret;
 }
 
-function decrypt(ciphertext: string): string {
-  const bytes = CryptoJS.AES.decrypt(ciphertext, APP_SECRET);
+function encrypt(plaintext: string, secret: string): string {
+  return CryptoJS.AES.encrypt(plaintext, secret).toString();
+}
+
+function decrypt(ciphertext: string, secret: string): string {
+  const bytes = CryptoJS.AES.decrypt(ciphertext, secret);
   return bytes.toString(CryptoJS.enc.Utf8);
 }
 
@@ -45,7 +73,8 @@ const FALLBACK_PREFIX = 'secure_fallback_';
  */
 export async function secureWrite<T>(key: string, value: T): Promise<void> {
   const json = JSON.stringify(value);
-  const encrypted = encrypt(json);
+  const secret = await getAppSecret();
+  const encrypted = encrypt(json, secret);
   try {
     await EncryptedStorage.setItem(key, encrypted);
   } catch (e) {
@@ -79,7 +108,8 @@ export async function secureRead<T>(key: string): Promise<T | null> {
     );
   }
   if (!ciphertext) return null;
-  const json = decrypt(ciphertext);
+  const secret = await getAppSecret();
+  const json = decrypt(ciphertext, secret);
   if (!json) return null;
   return JSON.parse(json) as T;
 }

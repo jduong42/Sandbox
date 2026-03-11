@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { BLEStatus } from '../components/figma/BLEStatus';
@@ -15,10 +16,19 @@ import {
   TrainingSession,
 } from '../components/figma/TrainingSessionCard';
 import { StartSessionModal } from '../components/figma/StartSessionModal';
+import { Toast } from '../components/common/Toast';
+import { useToast } from '../hooks/useToast';
 import { useTheme } from '../theme/ThemeContext';
 import { sessionRepository } from '../services/SessionRepository';
+import { sessionRecordingService } from '../services/SessionRecordingService';
 import { useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import { useAuth } from '../context/AuthContext';
+import { useBLEScanning } from '../hooks/useBLEScanning';
 import type { TrainingSession as StoredSession } from '../types/training';
+import type { TrainingType } from '../types/training';
+import type { RootStackParamList } from '../navigation/NavigationTypes';
 
 function formatType(type: string): string {
   return (type ?? 'Session')
@@ -48,25 +58,26 @@ function formatRelativeDate(d: Date): string {
 }
 
 function toCardSession(s: StoredSession): TrainingSession {
-  const d = new Date((s as any).startTime ?? (s as any).date ?? Date.now());
-  const mins = Math.round(((s as any).duration ?? 0) / 60);
+  const d = new Date(s.startTime ?? s.date ?? Date.now());
+  const mins = Math.round((s.duration ?? 0) / 60);
   return {
-    id: (s as any).id,
-    name: (s as any).title ?? formatType((s as any).type ?? ''),
+    id: s.id,
+    name: s.title ?? formatType(s.type ?? ''),
     date: formatRelativeDate(d),
     duration: `${mins} min`,
-    calories: Math.round((s as any).calories ?? 0),
-    heartRate: Math.round((s as any).averageHeartRate ?? 0),
-    trimpScore: (s as any).trimpScore,
+    calories: Math.round(s.calories ?? 0),
+    heartRate: Math.round(s.averageHeartRate ?? 0),
+    trimpScore: s.trimpScore,
   };
 }
 
 export function FigmaStartWorkoutScreen() {
   const { c } = useTheme();
-  const [isConnected, setIsConnected] = useState(true);
-  const [deviceName] = useState('FitBand Pro');
-  const [batteryLevel] = useState(78);
-  const [showModal, setShowModal] = useState(false);
+  const { user } = useAuth();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+  const { isConnected, connectedDeviceName, connectedDevice } =
+    useBLEScanning() as any;
+  const { toast, show: showToast, hide: hideToast } = useToast(4000);
   const [showAllSessions, setShowAllSessions] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
@@ -80,10 +91,14 @@ export function FigmaStartWorkoutScreen() {
     }
   }, []);
 
-  // useFocusEffect requires a sync callback — call the async fn without returning its Promise
+  // Reload sessions and recording state every time this screen comes into focus
+  // (covers the case where user navigates back from StartSessionScreen)
   useFocusEffect(
     useCallback(() => {
       loadSessions();
+      sessionRecordingService.getActiveSession().then(active => {
+        setIsRecording(!!active);
+      });
     }, [loadSessions]),
   );
 
@@ -97,10 +112,25 @@ export function FigmaStartWorkoutScreen() {
     year: 'numeric',
   });
 
-  const handleStartSession = (sessionName: string) => {
-    setIsRecording(true);
-    setShowModal(false);
-    console.log('Starting session:', sessionName);
+  const handleStopSession = async () => {
+    Alert.alert('Stop Recording', 'Save this session?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Stop & Save',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await sessionRecordingService.stopRecording();
+            setIsRecording(false);
+            await loadSessions();
+            showToast('Session saved successfully', 'success');
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            Alert.alert('Could not stop session', msg);
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -116,7 +146,7 @@ export function FigmaStartWorkoutScreen() {
               <Text style={[styles.date, { color: c.muted }]}>{today}</Text>
             </View>
             <TouchableOpacity style={styles.avatar}>
-              <Text style={styles.avatarText}>A</Text>
+              <Text style={styles.avatarText}>{user?.avatar ?? 'A'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -124,9 +154,11 @@ export function FigmaStartWorkoutScreen() {
           <View style={styles.section}>
             <BLEStatus
               isConnected={isConnected}
-              deviceName={deviceName}
-              batteryLevel={batteryLevel}
-              onConnect={() => setIsConnected(!isConnected)}
+              deviceName={connectedDeviceName ?? 'No Device'}
+              batteryLevel={0}
+              onConnect={() => {
+                /* navigate to Settings to pair */
+              }}
             />
           </View>
 
@@ -134,7 +166,11 @@ export function FigmaStartWorkoutScreen() {
           <View style={styles.section}>
             <StartSessionButton
               isRecording={isRecording}
-              onClick={() => setShowModal(true)}
+              onClick={
+                isRecording
+                  ? handleStopSession
+                  : () => navigation.navigate('StartSession')
+              }
             />
           </View>
 
@@ -187,11 +223,13 @@ export function FigmaStartWorkoutScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Modal */}
-      <StartSessionModal
-        visible={showModal}
-        onClose={() => setShowModal(false)}
-        onStart={handleStartSession}
+      {/* Toast notifications */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        duration={4000}
+        onDismiss={hideToast}
       />
     </LinearGradient>
   );

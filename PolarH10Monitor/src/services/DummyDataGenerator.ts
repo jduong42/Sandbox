@@ -329,7 +329,7 @@ export class DummyDataGenerator {
   // Helper methods
   private getRandomTrainingType(): TrainingType {
     const types = Object.values(TrainingType);
-    const weights = {
+    const weights: Partial<Record<TrainingType, number>> = {
       [TrainingType.JOGGING]: 30,
       [TrainingType.RUNNING]: 25,
       [TrainingType.RECOVERY_RUN]: 15,
@@ -337,6 +337,12 @@ export class DummyDataGenerator {
       [TrainingType.INTERVAL_TRAINING]: 10,
       [TrainingType.TEMPO_RUN]: 8,
       [TrainingType.FARTLEK]: 2,
+      [TrainingType.CYCLING]: 5,
+      [TrainingType.HIIT]: 5,
+      [TrainingType.STRENGTH]: 5,
+      [TrainingType.YOGA]: 3,
+      [TrainingType.SWIMMING]: 3,
+      [TrainingType.WALKING]: 5,
     };
 
     const weightedTypes: TrainingType[] = [];
@@ -350,7 +356,7 @@ export class DummyDataGenerator {
   }
 
   private getTypicalDuration(type: TrainingType): number {
-    const durations = {
+    const durations: Partial<Record<TrainingType, number>> = {
       [TrainingType.RECOVERY_RUN]: 20 + Math.random() * 20, // 20-40 min
       [TrainingType.JOGGING]: 30 + Math.random() * 30, // 30-60 min
       [TrainingType.RUNNING]: 35 + Math.random() * 25, // 35-60 min
@@ -358,13 +364,19 @@ export class DummyDataGenerator {
       [TrainingType.INTERVAL_TRAINING]: 20 + Math.random() * 25, // 20-45 min
       [TrainingType.LONG_DISTANCE]: 60 + Math.random() * 60, // 60-120 min
       [TrainingType.FARTLEK]: 30 + Math.random() * 30, // 30-60 min
+      [TrainingType.CYCLING]: 40 + Math.random() * 50, // 40-90 min
+      [TrainingType.HIIT]: 20 + Math.random() * 20, // 20-40 min
+      [TrainingType.STRENGTH]: 30 + Math.random() * 30, // 30-60 min
+      [TrainingType.YOGA]: 30 + Math.random() * 30, // 30-60 min
+      [TrainingType.SWIMMING]: 30 + Math.random() * 30, // 30-60 min
+      [TrainingType.WALKING]: 30 + Math.random() * 60, // 30-90 min
     };
 
-    return Math.round(durations[type]);
+    return Math.round(durations[type] ?? 30 + Math.random() * 30);
   }
 
   private generateSessionTitle(type: TrainingType, duration: number): string {
-    const titles = {
+    const titles: Partial<Record<TrainingType, string[]>> = {
       [TrainingType.RECOVERY_RUN]: [`Easy Recovery Run`, `Recovery Jog`],
       [TrainingType.JOGGING]: [`Morning Jog`, `Easy Jog`, `Base Run`],
       [TrainingType.RUNNING]: [`Steady Run`, `Moderate Run`],
@@ -380,10 +392,16 @@ export class DummyDataGenerator {
         `Endurance Run`,
       ],
       [TrainingType.FARTLEK]: [`Fartlek Training`, `Play Run`],
+      [TrainingType.CYCLING]: [`Cycling`, `Bike Ride`, `Road Cycling`],
+      [TrainingType.HIIT]: [`HIIT Session`, `Circuit Training`, `High Intensity`],
+      [TrainingType.STRENGTH]: [`Strength Training`, `Weight Session`, `Gym`],
+      [TrainingType.YOGA]: [`Yoga Session`, `Flexibility`, `Stretch`],
+      [TrainingType.SWIMMING]: [`Swimming`, `Pool Session`, `Swim`],
+      [TrainingType.WALKING]: [`Walk`, `Morning Walk`, `Hiking`],
     };
 
-    const baseTitle =
-      titles[type][Math.floor(Math.random() * titles[type].length)];
+    const options = titles[type] ?? [`Training Session`];
+    const baseTitle = options[Math.floor(Math.random() * options.length)];
     return `${baseTitle} (${Math.round(duration)} min)`;
   }
 
@@ -392,7 +410,7 @@ export class DummyDataGenerator {
     durationMinutes: number,
   ): number {
     // Rough pace estimates in meters per minute
-    const paces = {
+    const paces: Partial<Record<TrainingType, number>> = {
       [TrainingType.RECOVERY_RUN]: 120, // ~8 min/km
       [TrainingType.JOGGING]: 150, // ~6:40 min/km
       [TrainingType.RUNNING]: 180, // ~5:30 min/km
@@ -400,14 +418,17 @@ export class DummyDataGenerator {
       [TrainingType.INTERVAL_TRAINING]: 220, // ~4:30 min/km
       [TrainingType.LONG_DISTANCE]: 140, // ~7 min/km
       [TrainingType.FARTLEK]: 170, // ~5:50 min/km
+      [TrainingType.CYCLING]: 250, // ~4 min/km equivalent
+      [TrainingType.WALKING]: 80, // ~12 min/km
+      [TrainingType.SWIMMING]: 50, // pool distance
     };
 
-    return Math.round(paces[type] * durationMinutes);
+    return Math.round((paces[type] ?? 0) * durationMinutes);
   }
 
   private estimatePace(type: TrainingType): number {
     // Pace in minutes per km
-    const paces = {
+    const paces: Partial<Record<TrainingType, number>> = {
       [TrainingType.RECOVERY_RUN]: 8.0,
       [TrainingType.JOGGING]: 6.7,
       [TrainingType.RUNNING]: 5.5,
@@ -415,8 +436,11 @@ export class DummyDataGenerator {
       [TrainingType.INTERVAL_TRAINING]: 4.5,
       [TrainingType.LONG_DISTANCE]: 7.0,
       [TrainingType.FARTLEK]: 5.8,
+      [TrainingType.CYCLING]: 3.5,
+      [TrainingType.WALKING]: 12.0,
+      [TrainingType.SWIMMING]: 2.5,
     };
 
-    return paces[type] + (Math.random() - 0.5) * 0.5; // Add some variation
+    return (paces[type] ?? 6.0) + (Math.random() - 0.5) * 0.5; // Add some variation
   }
 }

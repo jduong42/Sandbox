@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,17 +18,31 @@ export interface NearbyDevice {
   rssi: number;
 }
 
+interface DiscoveredDevice {
+  id: string;
+  name: string;
+  rssi?: number;
+}
+
 interface ScanDevicesModalProps {
   onClose: () => void;
   onSelectDevice: (device: NearbyDevice) => void;
   existingDeviceIds: string[];
+  /** Real discovered devices from useBLEScanning */
+  discoveredDevices: DiscoveredDevice[];
+  /** Whether a BLE scan is in progress */
+  isScanning: boolean;
+  /** Trigger a new BLE scan */
+  onStartScan: () => void;
 }
 
-const SIGNAL_EMOJI: Record<NearbyDevice['signalStrength'], string> = {
-  high: '📶',
-  medium: '📶',
-  low: '📶',
-};
+function rssiToSignalStrength(rssi?: number): NearbyDevice['signalStrength'] {
+  if (rssi === undefined) return 'low';
+  if (rssi >= -60) return 'high';
+  if (rssi >= -75) return 'medium';
+  return 'low';
+}
+
 const SIGNAL_COLOR: Record<NearbyDevice['signalStrength'], string> = {
   high: t.colors.green,
   medium: t.colors.amber,
@@ -40,42 +54,28 @@ const SIGNAL_LABEL: Record<NearbyDevice['signalStrength'], string> = {
   low: 'Weak signal',
 };
 
-const MOCK_DEVICES: NearbyDevice[] = [
-  { id: 'nearby-1', name: 'FitBand Ultra', signalStrength: 'high', rssi: -45 },
-  {
-    id: 'nearby-2',
-    name: 'Sport Tracker 3',
-    signalStrength: 'medium',
-    rssi: -65,
-  },
-  { id: 'nearby-3', name: 'Pulse Monitor', signalStrength: 'high', rssi: -40 },
-  { id: 'nearby-4', name: 'Health Watch', signalStrength: 'low', rssi: -85 },
-  {
-    id: 'nearby-5',
-    name: 'Fitness Band X',
-    signalStrength: 'medium',
-    rssi: -70,
-  },
-];
-
 export function ScanDevicesModal({
   onClose,
   onSelectDevice,
   existingDeviceIds,
+  discoveredDevices,
+  isScanning,
+  onStartScan,
 }: ScanDevicesModalProps) {
-  const [isScanning, setIsScanning] = useState(true);
-  const [foundDevices, setFoundDevices] = useState<NearbyDevice[]>([]);
-
+  // Start a scan automatically when the modal opens
   useEffect(() => {
-    const available = MOCK_DEVICES.filter(
-      d => !existingDeviceIds.includes(d.id),
-    );
-    const timer = setTimeout(() => {
-      setFoundDevices(available);
-      setIsScanning(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [existingDeviceIds]);
+    onStartScan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const foundDevices = discoveredDevices
+    .filter(d => !existingDeviceIds.includes(d.id))
+    .map(d => ({
+      id: d.id,
+      name: d.name,
+      rssi: d.rssi ?? -80,
+      signalStrength: rssiToSignalStrength(d.rssi),
+    } as NearbyDevice));
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -106,7 +106,7 @@ export function ScanDevicesModal({
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
               >
-                {isScanning ? (
+                {isScanning && foundDevices.length === 0 ? (
                   <View style={styles.scanningState}>
                     <ActivityIndicator size="large" color={t.colors.primary} />
                     <Text style={styles.scanTitle}>Searching for devices</Text>
@@ -141,9 +141,6 @@ export function ScanDevicesModal({
                             {SIGNAL_LABEL[device.signalStrength]}
                           </Text>
                         </View>
-                        <Text style={styles.signalEmoji}>
-                          {SIGNAL_EMOJI[device.signalStrength]}
-                        </Text>
                       </TouchableOpacity>
                     ))}
                   </>
@@ -154,8 +151,15 @@ export function ScanDevicesModal({
                     </View>
                     <Text style={styles.emptyTitle}>No devices found</Text>
                     <Text style={styles.emptySub}>
-                      Make sure your devices are turned on and in pairing mode.
+                      Make sure your device is turned on and in pairing mode.
                     </Text>
+                    <TouchableOpacity
+                      style={styles.rescanBtn}
+                      onPress={onStartScan}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.rescanText}>Scan Again</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </ScrollView>
@@ -322,6 +326,21 @@ const styles = StyleSheet.create({
     color: t.colors.muted,
     fontSize: t.typography.sizes.sm,
     textAlign: 'center',
+    marginBottom: t.spacing.lg,
+  },
+  rescanBtn: {
+    backgroundColor: t.colors.primary,
+    borderRadius: t.radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  rescanText: {
+    color: '#fff',
+    fontSize: t.typography.sizes.base,
+    fontWeight: t.typography.weights.semibold,
   },
   footer: {
     padding: t.spacing.xl,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { figmaTheme as t } from '../theme/figmaTheme';
@@ -19,62 +20,82 @@ import {
   ScanDevicesModal,
   NearbyDevice,
 } from '../components/figma/ScanDevicesModal';
-
-const INITIAL_DEVICES: BLEDevice[] = [
-  {
-    id: '1',
-    name: 'FitBand Pro',
-    batteryLevel: 78,
-    isActive: true,
-    lastConnected: 'Connected now',
-  },
-  {
-    id: '2',
-    name: 'Heart Monitor X',
-    batteryLevel: 45,
-    isActive: false,
-    lastConnected: 'Yesterday',
-  },
-  {
-    id: '3',
-    name: 'Smart Watch 5',
-    batteryLevel: 92,
-    isActive: false,
-    lastConnected: '2 days ago',
-  },
-];
+import { useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../context/AuthContext';
+import { deviceHistoryService } from '../services/DeviceHistoryService';
+import { bleService } from '../services/BLEService';
+import { useBLEScanning } from '../hooks/useBLEScanning';
 
 export function FigmaSettingsScreen() {
   const { isDark, toggleTheme, c } = useTheme();
-  const [devices, setDevices] = useState<BLEDevice[]>(INITIAL_DEVICES);
+  const { user } = useAuth();
+  const { isConnected, connectedDeviceName, startScan, discoveredDevices, isScanning } =
+    useBLEScanning();
+  const [devices, setDevices] = useState<BLEDevice[]>([]);
   const [deviceToDelete, setDeviceToDelete] = useState<BLEDevice | null>(null);
   const [showScanModal, setShowScanModal] = useState(false);
 
-  const handleSelectDevice = (deviceId: string) => {
-    setDevices(prev => prev.map(d => ({ ...d, isActive: d.id === deviceId })));
+  const loadDevices = useCallback(async () => {
+    try {
+      const stored = await deviceHistoryService.getDevices();
+      setDevices(
+        stored.map(d => ({
+          id: d.id,
+          name: d.name,
+          batteryLevel: 0, // Battery not tracked by BLE history
+          isActive: isConnected && connectedDeviceName === d.name,
+          lastConnected: deviceHistoryService.getFormattedLastConnected(
+            d.lastConnected,
+          ),
+        })),
+      );
+    } catch (e) {
+      console.warn('[SettingsScreen] failed to load devices', e);
+    }
+  }, [isConnected, connectedDeviceName]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDevices();
+    }, [loadDevices]),
+  );
+
+  const handleSelectDevice = async (deviceId: string) => {
+    const target = devices.find(d => d.id === deviceId);
+    if (!target) return;
+    try {
+      await bleService.connectToDevice(deviceId);
+      await loadDevices();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Connection failed';
+      Alert.alert('Connection Failed', msg);
+    }
   };
 
   const handleDeleteDevice = (device: BLEDevice) => {
     setDeviceToDelete(device);
   };
 
-  const confirmDeleteDevice = () => {
-    if (deviceToDelete) {
-      setDevices(prev => prev.filter(d => d.id !== deviceToDelete.id));
+  const confirmDeleteDevice = async () => {
+    if (!deviceToDelete) return;
+    try {
+      await deviceHistoryService.removeDevice(deviceToDelete.id);
       setDeviceToDelete(null);
+      await loadDevices();
+    } catch (err) {
+      Alert.alert('Error', 'Could not remove device.');
     }
   };
 
-  const handlePairDevice = (nearbyDevice: NearbyDevice) => {
-    const newDevice: BLEDevice = {
-      id: nearbyDevice.id,
-      name: nearbyDevice.name,
-      batteryLevel: Math.floor(Math.random() * 50) + 50,
-      isActive: false,
-      lastConnected: 'Just paired',
-    };
-    setDevices(prev => [...prev, newDevice]);
+  const handlePairDevice = async (nearbyDevice: NearbyDevice) => {
     setShowScanModal(false);
+    try {
+      await bleService.connectToDevice(nearbyDevice.id);
+      await loadDevices();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Pairing failed';
+      Alert.alert('Pairing Failed', msg);
+    }
   };
 
   return (
@@ -95,7 +116,7 @@ export function FigmaSettingsScreen() {
               </Text>
             </View>
             <TouchableOpacity style={styles.avatar}>
-              <Text style={styles.avatarText}>A</Text>
+              <Text style={styles.avatarText}>{user?.avatar ?? 'A'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -228,6 +249,9 @@ export function FigmaSettingsScreen() {
           onClose={() => setShowScanModal(false)}
           onSelectDevice={handlePairDevice}
           existingDeviceIds={devices.map(d => d.id)}
+          discoveredDevices={discoveredDevices}
+          isScanning={isScanning}
+          onStartScan={startScan}
         />
       )}
 

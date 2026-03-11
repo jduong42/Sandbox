@@ -7,26 +7,32 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
-  TouchableWithoutFeedback,
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import NativeIcon from '../common/NativeIcon';
+import { TrainingType } from '../../types/training';
 
 interface StartSessionModalProps {
   visible: boolean;
   onClose: () => void;
-  onStart: (sessionName: string) => void;
+  onStart: (sessionName: string, sessionType: TrainingType) => void;
 }
 
-const PRESET_WORKOUTS = [
-  'Yoga',
-  'Pilates',
-  'HIIT Training',
-  'Strength Training',
-  'Cardio',
-  'Running',
-  'Cycling',
-  'Swimming',
+interface WorkoutPreset {
+  label: string;
+  type: TrainingType;
+}
+
+const WORKOUT_PRESETS: WorkoutPreset[] = [
+  { label: '🏃 Running', type: TrainingType.RUNNING },
+  { label: '🚴 Cycling', type: TrainingType.CYCLING },
+  { label: '❤️ HIIT', type: TrainingType.HIIT },
+  { label: '🏋️ Strength', type: TrainingType.STRENGTH },
+  { label: '🧘 Yoga', type: TrainingType.YOGA },
+  { label: '🏊 Swimming', type: TrainingType.SWIMMING },
+  { label: '🚶 Walking', type: TrainingType.WALKING },
+  { label: '🏃 Jogging', type: TrainingType.JOGGING },
 ];
 
 export function StartSessionModal({
@@ -35,241 +41,249 @@ export function StartSessionModal({
   onStart,
 }: StartSessionModalProps) {
   const [sessionName, setSessionName] = useState('');
+  const [selectedType, setSelectedType] = useState<TrainingType>(
+    TrainingType.RUNNING,
+  );
 
   const handleStart = () => {
     if (sessionName.trim()) {
-      onStart(sessionName.trim());
+      onStart(sessionName.trim(), selectedType);
       setSessionName('');
+      setSelectedType(TrainingType.RUNNING);
     }
   };
 
   const handleClose = () => {
     setSessionName('');
+    setSelectedType(TrainingType.RUNNING);
     onClose();
+  };
+
+  const handlePresetSelect = (preset: WorkoutPreset) => {
+    setSelectedType(preset.type);
+    if (!sessionName.trim()) {
+      setSessionName(preset.label.replace(/^\S+\s/, ''));
+    }
   };
 
   return (
     <Modal
       visible={visible}
-      transparent
       animationType="slide"
+      presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <TouchableWithoutFeedback onPress={handleClose}>
-        <View style={styles.backdrop}>
-          <TouchableWithoutFeedback>
-            <View style={styles.sheet}>
-              {/* Header */}
-              <View style={styles.header}>
-                <Text style={styles.title}>New Training Session</Text>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>New Training Session</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={handleClose}
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
+              <NativeIcon name="close" size={20} color="#e2e8f0" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Scrollable content — button lives here so keyboard never covers it */}
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            automaticallyAdjustKeyboardInsets
+          >
+            {/* Activity type picker */}
+            <Text style={styles.sectionLabel}>Activity Type</Text>
+            <View style={styles.presetGrid}>
+              {WORKOUT_PRESETS.map(preset => (
                 <TouchableOpacity
-                  style={styles.closeButton}
-                  onPress={handleClose}
+                  key={preset.type}
+                  style={[
+                    styles.presetButton,
+                    selectedType === preset.type && styles.presetButtonActive,
+                  ]}
+                  onPress={() => handlePresetSelect(preset)}
+                  activeOpacity={0.7}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selectedType === preset.type }}
                 >
-                  <NativeIcon name="close" size={20} color="#e2e8f0" />
+                  <Text
+                    style={[
+                      styles.presetText,
+                      selectedType === preset.type && styles.presetTextActive,
+                    ]}
+                  >
+                    {preset.label}
+                  </Text>
                 </TouchableOpacity>
-              </View>
-
-              {/* Content */}
-              <ScrollView
-                style={styles.content}
-                showsVerticalScrollIndicator={false}
-              >
-                {/* Text input */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Training Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={sessionName}
-                    onChangeText={setSessionName}
-                    placeholder="e.g., Morning Yoga"
-                    placeholderTextColor="#94a3b8"
-                    returnKeyType="done"
-                    onSubmitEditing={handleStart}
-                    autoFocus
-                  />
-                </View>
-
-                {/* Quick select */}
-                <View style={styles.presetGroup}>
-                  <Text style={styles.presetLabel}>Quick Select</Text>
-                  <View style={styles.presetGrid}>
-                    {PRESET_WORKOUTS.map(preset => (
-                      <TouchableOpacity
-                        key={preset}
-                        style={[
-                          styles.presetButton,
-                          sessionName === preset && styles.presetButtonActive,
-                        ]}
-                        onPress={() => setSessionName(preset)}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.presetText,
-                            sessionName === preset && styles.presetTextActive,
-                          ]}
-                        >
-                          {preset}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              </ScrollView>
-
-              {/* Footer */}
-              <View style={styles.footer}>
-                <TouchableOpacity
-                  onPress={handleStart}
-                  disabled={!sessionName.trim()}
-                  activeOpacity={0.8}
-                  style={styles.startWrapper}
-                >
-                  {sessionName.trim() ? (
-                    <LinearGradient
-                      colors={['#a855f7', '#ec4899']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.startButton}
-                    >
-                      <Text style={styles.startButtonText}>
-                        Start Recording
-                      </Text>
-                    </LinearGradient>
-                  ) : (
-                    <View
-                      style={[styles.startButton, styles.startButtonDisabled]}
-                    >
-                      <Text style={styles.startButtonTextDisabled}>
-                        Start Recording
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </View>
+              ))}
             </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+
+            {/* Session name */}
+            <Text style={[styles.sectionLabel, { marginTop: 28 }]}>
+              Session Name
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={sessionName}
+              onChangeText={setSessionName}
+              placeholder="e.g., Morning Run"
+              placeholderTextColor="#94a3b8"
+              returnKeyType="done"
+              onSubmitEditing={handleStart}
+            />
+          </ScrollView>
+
+          {/* Footer pinned outside ScrollView — SafeAreaView from react-native-safe-area-context
+            (backed by SafeAreaProvider inside the Modal) correctly reads the modal's
+            bottom inset and pads above the home indicator. */}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              onPress={handleStart}
+              disabled={!sessionName.trim()}
+              activeOpacity={0.8}
+              style={styles.startWrapper}
+              accessibilityRole="button"
+              accessibilityLabel="Start Recording"
+              accessibilityState={{ disabled: !sessionName.trim() }}
+            >
+              {sessionName.trim() ? (
+                <LinearGradient
+                  colors={['#a855f7', '#ec4899']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.startButton}
+                >
+                  <Text style={styles.startButtonText}>Start Recording</Text>
+                </LinearGradient>
+              ) : (
+                <View style={[styles.startButton, styles.startButtonDisabled]}>
+                  <Text style={styles.startButtonTextDisabled}>
+                    Start Recording
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
+  container: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#1e293b',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
+    backgroundColor: '#0f172a',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#1e293b',
   },
   title: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#ffffff',
   },
   closeButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(51, 65, 85, 0.5)',
+    backgroundColor: 'rgba(51,65,85,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: {
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: 24,
+    paddingBottom: 32,
   },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  inputLabel: {
+  sectionLabel: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#e2e8f0',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: 'rgba(51, 65, 85, 0.5)',
-    borderWidth: 1,
-    borderColor: '#475569',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: '#ffffff',
-    fontSize: 16,
-  },
-  presetGroup: {
-    marginBottom: 24,
-  },
-  presetLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#e2e8f0',
-    marginBottom: 12,
+    fontWeight: '600',
+    color: '#94a3b8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 14,
   },
   presetGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
   presetButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
     borderRadius: 12,
-    backgroundColor: 'rgba(51, 65, 85, 0.5)',
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
     minHeight: 44,
     justifyContent: 'center',
   },
   presetButtonActive: {
-    backgroundColor: '#a855f7',
+    backgroundColor: '#7c3aed',
+    borderColor: '#a855f7',
   },
   presetText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#e2e8f0',
+    color: '#94a3b8',
   },
   presetTextActive: {
     color: '#ffffff',
+    fontWeight: '600',
+  },
+  input: {
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    color: '#ffffff',
+    fontSize: 16,
+    marginTop: 4,
   },
   footer: {
-    padding: 24,
+    padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderTopColor: '#1e293b',
   },
   startWrapper: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   startButton: {
-    paddingVertical: 16,
+    paddingVertical: 17,
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 14,
     minHeight: 56,
     justifyContent: 'center',
   },
   startButtonDisabled: {
-    backgroundColor: '#334155',
+    backgroundColor: '#1e293b',
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   startButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   startButtonTextDisabled: {
-    color: '#64748b',
+    color: '#475569',
     fontSize: 16,
     fontWeight: '600',
   },

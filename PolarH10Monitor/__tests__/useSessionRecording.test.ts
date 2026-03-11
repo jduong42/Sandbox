@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { useSessionRecording } from '../src/hooks/useSessionRecording';
 import { sessionRecordingService } from '../src/services/SessionRecordingService';
 import { useBLEScanning } from '../src/hooks/useBLEScanning';
+import { TrainingType } from '../src/types/training';
 
 // Mock the dependencies
 jest.mock('../src/services/SessionRecordingService');
@@ -49,6 +50,7 @@ describe('useSessionRecording', () => {
       const mockSession = {
         id: 'session_123',
         name: 'Test Session',
+        type: TrainingType.RUNNING,
         startTime: new Date(),
         deviceId: 'device123',
         deviceName: 'Polar H10',
@@ -60,12 +62,13 @@ describe('useSessionRecording', () => {
       const { result } = renderHook(() => useSessionRecording());
 
       await act(async () => {
-        const success = await result.current.startRecording('Test Session');
+        const success = await result.current.startRecording('Test Session', TrainingType.RUNNING);
         expect(success).toBe(true);
       });
 
       expect(mockSessionRecordingService.startRecording).toHaveBeenCalledWith(
         'Test Session',
+        TrainingType.RUNNING,
         'device123',
         'Polar H10'
       );
@@ -76,23 +79,35 @@ describe('useSessionRecording', () => {
       );
     });
 
-    it('should show error when not connected', async () => {
+    it('should start recording without BLE (manual path)', async () => {
       mockUseBLEScanning.mockReturnValue({
         ...mockBLEState,
         isConnected: false,
+        discoveredDevices: [],
       });
+
+      const mockSession = {
+        id: 'session_manual',
+        name: 'Manual Run',
+        type: TrainingType.RUNNING,
+        startTime: new Date(),
+        status: 'recording' as const,
+      };
+      mockSessionRecordingService.startRecording.mockResolvedValue(mockSession as any);
 
       const { result } = renderHook(() => useSessionRecording());
 
       await act(async () => {
-        const success = await result.current.startRecording('Test Session');
-        expect(success).toBe(false);
+        const success = await result.current.startRecording('Manual Run', TrainingType.RUNNING);
+        expect(success).toBe(true);
       });
 
-      expect(mockAlert.alert).toHaveBeenCalledWith(
-        'Device Not Connected',
-        expect.stringContaining('connect to your Polar H10'),
-        [{ text: 'OK' }]
+      // Service called without device args when no BLE
+      expect(mockSessionRecordingService.startRecording).toHaveBeenCalledWith(
+        'Manual Run',
+        TrainingType.RUNNING,
+        undefined,
+        undefined,
       );
     });
 
@@ -100,7 +115,7 @@ describe('useSessionRecording', () => {
       const { result } = renderHook(() => useSessionRecording());
 
       await act(async () => {
-        const success = await result.current.startRecording('   ');
+        const success = await result.current.startRecording('   ', TrainingType.RUNNING);
         expect(success).toBe(false);
       });
 
@@ -119,7 +134,7 @@ describe('useSessionRecording', () => {
       const { result } = renderHook(() => useSessionRecording());
 
       await act(async () => {
-        const success = await result.current.startRecording('Test Session');
+        const success = await result.current.startRecording('Test Session', TrainingType.RUNNING);
         expect(success).toBe(false);
       });
 
@@ -135,6 +150,7 @@ describe('useSessionRecording', () => {
     const mockActiveSession = {
       id: 'session_123',
       name: 'Test Session',
+      type: TrainingType.RUNNING,
       startTime: new Date(),
       deviceId: 'device123',
       deviceName: 'Polar H10',
@@ -164,6 +180,11 @@ describe('useSessionRecording', () => {
       });
 
       const { result } = renderHook(() => useSessionRecording());
+
+      // Let the mount effects settle so activeSession is populated
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      });
 
       await act(async () => {
         const success = await result.current.stopRecording();
@@ -226,23 +247,16 @@ describe('useSessionRecording', () => {
 
   describe('computed values', () => {
     it('should calculate canStartRecording correctly', () => {
-      // Connected with no active session
+      // No active session → can start regardless of BLE state
       const { result } = renderHook(() => useSessionRecording());
       expect(result.current.canStartRecording).toBe(true);
-
-      // Not connected
-      mockUseBLEScanning.mockReturnValue({
-        ...mockBLEState,
-        isConnected: false,
-      });
-      const { result: result2 } = renderHook(() => useSessionRecording());
-      expect(result2.current.canStartRecording).toBe(false);
     });
 
     it('should determine isRecording status correctly', async () => {
       const mockActiveSession = {
         id: 'session_123',
         name: 'Test Session',
+        type: TrainingType.RUNNING,
         startTime: new Date(),
         deviceId: 'device123',
         deviceName: 'Polar H10',

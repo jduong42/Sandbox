@@ -2,12 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
-import { sessionRepository } from '../../services/SessionRepository';
-import { AnalyticsService } from '../../services/AnalyticsService';
-import { calculateACWR, DailyLoad, ACWRRisk } from '../../utils/ACWRCalculator';
+import { useACWR } from '../../hooks/useACWR';
+import { ACWRRisk } from '../../utils/ACWRCalculator';
 import { calculateStreak } from '../../utils/StreakCalculator';
-import { usePhysiologyStore } from '../../store/physiologyStore';
-import type { TrainingSession } from '../../types/training';
 
 // ─── Message logic ────────────────────────────────────────────────────────────
 
@@ -106,7 +103,7 @@ function buildBannerState(
 export function CoachBanner() {
   const { c } = useTheme();
   const navigation = useNavigation<any>();
-  const physiology = usePhysiologyStore(s => s.settings);
+  const { result: acwrResult, enrichedSessions, reload } = useACWR(90);
   const [banner, setBanner] = useState<BannerState>({
     color: '#6366f1',
     icon: '💡',
@@ -114,67 +111,34 @@ export function CoachBanner() {
     suggestion: 'What should I do today?',
   });
 
-  const loadBanner = useCallback(async () => {
+  const updateBanner = useCallback(() => {
     try {
-      // Fetch most recent 90 days of sessions from SQLite (covers ACWR window
-      // + streak calculation without loading the full history into memory).
-      const all = await sessionRepository.getRecent(90);
-
-      // Enrich TRIMP
-      const age = physiology?.ageYears ?? 30;
-      const userProfile = {
-        id: 'banner',
-        age,
-        restingHeartRate: physiology?.restingHeartRate ?? 60,
-        maxHeartRate: physiology?.maxHeartRate ?? 220 - age,
-        sex: physiology?.sex,
-      };
-      const enriched = AnalyticsService.enrichSessionsWithTRIMP(
-        all,
-        userProfile,
-      );
-
-      // ACWR
-      const dailyLoads: DailyLoad[] = enriched.map(s => ({
-        date: new Date((s as any).date ?? (s as any).startTime ?? Date.now()),
-        trimp: (s as any).trimpScore ?? 0,
-      }));
-      const acwrResult = calculateACWR(dailyLoads);
-
-      // Streak
-      const streakData = calculateStreak(
-        enriched as unknown as TrainingSession[],
-      );
-
+      const streakData = calculateStreak(enrichedSessions);
       setBanner(
         buildBannerState(
-          acwrResult.risk === 'insufficient_data' ? null : acwrResult.risk,
+          acwrResult == null || acwrResult.risk === 'insufficient_data'
+            ? null
+            : acwrResult.risk,
           streakData.currentStreak,
           streakData.daysSinceLastSession,
           streakData.totalSessions,
         ),
       );
-    } catch (e) {
-      console.error('[CoachBanner] load failed', e);
-      setBanner({
-        color: '#6366f1',
-        icon: '💡',
-        message: 'Keep logging sessions to get personalised training advice.',
-        suggestion: 'Help me plan this week',
-      });
+    } catch {
+      // keep current banner on error
     }
-  }, [physiology]);
+  }, [acwrResult, enrichedSessions]);
 
-  // Initial load + reload when physiology changes
+  // Rebuild banner whenever ACWR result or sessions change
   useEffect(() => {
-    loadBanner();
-  }, [loadBanner]);
+    updateBanner();
+  }, [updateBanner]);
 
-  // Reload every time the screen comes back into focus
+  // Reload data every time the screen comes back into focus
   useFocusEffect(
     useCallback(() => {
-      loadBanner();
-    }, [loadBanner]),
+      reload();
+    }, [reload]),
   );
 
   const handleAskCoach = () => {

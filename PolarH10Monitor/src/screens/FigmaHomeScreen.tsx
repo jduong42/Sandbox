@@ -24,7 +24,6 @@ import {
   isPhysiologyComplete,
   toUserProfile,
 } from '../store/physiologyStore';
-import type { TrainingSession } from '../types/training';
 import { sessionRepository } from '../services/SessionRepository';
 import { calculateStreak } from '../utils/StreakCalculator';
 import type { StreakData } from '../utils/StreakCalculator';
@@ -62,8 +61,6 @@ function formatSessionTime(date: Date | string | undefined): string {
   return `${diffDays} days ago`;
 }
 
-
-
 export function FigmaHomeScreen() {
   const { c } = useTheme();
   const { user } = useAuth();
@@ -81,31 +78,51 @@ export function FigmaHomeScreen() {
     }[]
   >([]);
   const [streakData, setStreakData] = useState<StreakData | null>(null);
+  const [exerciseMinutes, setExerciseMinutes] = useState(0);
+  const [weeklySessionCount, setWeeklySessionCount] = useState(0);
 
   const loadRecentActivities = useCallback(async () => {
     try {
-      // Fetch the 5 most recent sessions directly from SQLite
-      const all = await sessionRepository.getRecent(5);
+      // Fetch enough sessions to cover the activity list AND today's total
+      const all = await sessionRepository.getRecent(20);
 
+      // Compute today's active exercise minutes from sessions dated today
+      const todayStr = new Date().toDateString();
+      const todayMins = all
+        .filter(
+          s => new Date(s.date ?? s.startTime).toDateString() === todayStr,
+        )
+        .reduce((sum, s) => sum + (s.duration ?? 0), 0);
+      setExerciseMinutes(Math.round(todayMins / 60));
+
+      // Count sessions this calendar week (Mon–Sun) for the weekly ring
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+      weekStart.setHours(0, 0, 0, 0);
+      setWeeklySessionCount(
+        all.filter(s => new Date(s.date ?? s.startTime) >= weekStart).length,
+      );
+
+      // Show the 5 most recent for the activity list
       setRecentActivities(
-        all.map(s => {
-          const meta = activityMeta(String((s as any).type ?? ''));
-          const durationSec: number = (s as any).duration ?? 0;
+        all.slice(0, 5).map(s => {
+          const meta = activityMeta(s.type ?? '');
+          const durationSec: number = s.duration ?? 0;
           const durationMin = Math.round(durationSec / 60);
           return {
-            id: String((s as any).id),
-            name: (s as any).title ?? (s as any).type ?? 'Session',
-            time: formatSessionTime((s as any).date ?? (s as any).startTime),
+            id: s.id,
+            name: s.title ?? s.type ?? 'Session',
+            time: formatSessionTime(s.date ?? s.startTime),
             duration: durationMin > 0 ? `${durationMin} min` : '--',
-            calories: Math.round((s as any).calories ?? 0),
+            calories: Math.round(s.calories ?? 0),
             icon: meta.icon,
             color: meta.color,
           };
         }),
       );
 
-      // Streak data from all sessions
-      setStreakData(calculateStreak(all as unknown as TrainingSession[]));
+      // Streak data from loaded sessions
+      setStreakData(calculateStreak(all));
     } catch (e) {
       console.warn('[FigmaHomeScreen] failed to load sessions', e);
     }
@@ -138,9 +155,13 @@ export function FigmaHomeScreen() {
     100,
     Math.round((restingCalories / tdee) * 100),
   );
-  // Exercise ring: 0 until a real HR session runs
-  const exerciseMinutes = 0;
+  // Exercise ring: total active session minutes today (30 min = full ring)
   const exerciseProgress = Math.round((exerciseMinutes / 30) * 100);
+  // Weekly sessions ring: goal of 5 sessions/week
+  const weeklyProgress = Math.min(
+    100,
+    Math.round((weeklySessionCount / 5) * 100),
+  );
   const currentHour = new Date().getHours();
   const greeting =
     currentHour < 12
@@ -242,7 +263,7 @@ export function FigmaHomeScreen() {
                   strokeWidth={12}
                 />
                 <ActivityRing
-                  progress={85}
+                  progress={weeklyProgress}
                   color="rgb(59, 130, 246)"
                   size={144}
                   strokeWidth={12}
@@ -290,10 +311,10 @@ export function FigmaHomeScreen() {
                   style={[styles.legendDot, { backgroundColor: '#3b82f6' }]}
                 />
                 <Text style={[styles.legendLabel, { color: c.muted }]}>
-                  BMR/day
+                  Weekly
                 </Text>
                 <Text style={[styles.legendValue, { color: c.foreground }]}>
-                  {tdee} kcal
+                  {weeklySessionCount}/5 sessions
                 </Text>
               </View>
             </View>

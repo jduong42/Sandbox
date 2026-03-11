@@ -1,17 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
-import {
-  calculateACWR,
-  DailyLoad,
-  ACWRResult,
-  ACWRRisk,
-} from '../../utils/ACWRCalculator';
+import { ACWRResult, ACWRRisk } from '../../utils/ACWRCalculator';
 import { TrainingLoadModal } from './TrainingLoadModal';
-import { sessionRepository } from '../../services/SessionRepository';
-import { AnalyticsService } from '../../services/AnalyticsService';
-import { usePhysiologyStore } from '../../store/physiologyStore';
-import type { TrainingSession } from '../../types/training';
+import { useACWR } from '../../hooks/useACWR';
 
 const RISK_COLOR: Record<ACWRRisk, string> = {
   detraining: '#60a5fa',
@@ -33,49 +25,8 @@ const RISK_LABEL: Record<ACWRRisk, string> = {
 
 export function TrainingLoadCard() {
   const { c } = useTheme();
-  const [result, setResult] = useState<ACWRResult | null>(null);
+  const { result } = useACWR(28);
   const [modalVisible, setModalVisible] = useState(false);
-  const physiology = usePhysiologyStore(s => s.settings);
-
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        // 28 days is the ACWR chronic window — no need to load the full history
-        const all = await sessionRepository.getRecent(28);
-
-        // Enrich with TRIMP using current physiology profile
-        const age = physiology?.ageYears ?? 30;
-        const profile = {
-          id: 'card',
-          age,
-          restingHeartRate: physiology?.restingHeartRate ?? 60,
-          maxHeartRate:
-            physiology?.maxHeartRate != null
-              ? physiology.maxHeartRate
-              : 220 - age,
-          sex: physiology?.sex,
-        };
-        const enriched = AnalyticsService.enrichSessionsWithTRIMP(all, profile);
-
-        // Build daily loads for ACWR
-        const dailyLoads: DailyLoad[] = enriched.map(s => ({
-          date: new Date((s as any).date ?? (s as any).startTime ?? Date.now()),
-          trimp: (s as any).trimpScore ?? 0,
-        }));
-
-        if (active) {
-          setResult(calculateACWR(dailyLoads));
-        }
-      } catch (e) {
-        console.warn('[TrainingLoadCard] failed to load sessions', e);
-      }
-    }
-    load();
-    return () => {
-      active = false;
-    };
-  }, [physiology]);
 
   // ── Render placeholder ──────────────────────────────────────────────────────
   if (!result || result.risk === 'insufficient_data') {

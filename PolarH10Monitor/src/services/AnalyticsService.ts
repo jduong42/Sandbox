@@ -107,6 +107,12 @@ export class AnalyticsService {
       [TrainingType.LONG_DISTANCE]: { sessions: 0, duration: 0 },
       [TrainingType.RECOVERY_RUN]: { sessions: 0, duration: 0 },
       [TrainingType.FARTLEK]: { sessions: 0, duration: 0 },
+      [TrainingType.CYCLING]: { sessions: 0, duration: 0 },
+      [TrainingType.HIIT]: { sessions: 0, duration: 0 },
+      [TrainingType.STRENGTH]: { sessions: 0, duration: 0 },
+      [TrainingType.YOGA]: { sessions: 0, duration: 0 },
+      [TrainingType.SWIMMING]: { sessions: 0, duration: 0 },
+      [TrainingType.WALKING]: { sessions: 0, duration: 0 },
     };
 
     sessions.forEach(session => {
@@ -343,7 +349,7 @@ export class AnalyticsService {
    * Format training type names for display
    */
   private static formatTrainingTypeName(type: TrainingType): string {
-    const names = {
+    const names: { [key in TrainingType]: string } = {
       [TrainingType.JOGGING]: 'Jog',
       [TrainingType.RUNNING]: 'Run',
       [TrainingType.INTERVAL_TRAINING]: 'Intervals',
@@ -351,6 +357,12 @@ export class AnalyticsService {
       [TrainingType.LONG_DISTANCE]: 'Long Run',
       [TrainingType.RECOVERY_RUN]: 'Recovery',
       [TrainingType.FARTLEK]: 'Fartlek',
+      [TrainingType.CYCLING]: 'Cycling',
+      [TrainingType.HIIT]: 'HIIT',
+      [TrainingType.STRENGTH]: 'Strength',
+      [TrainingType.YOGA]: 'Yoga',
+      [TrainingType.SWIMMING]: 'Swimming',
+      [TrainingType.WALKING]: 'Walking',
     };
 
     return names[type];

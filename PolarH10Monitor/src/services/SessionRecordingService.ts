@@ -1,35 +1,62 @@
-import { secureRead, secureWrite, secureRemove } from '../utils/secureStorage';
+import { secureWrite, secureRead, secureRemove } from '../utils/secureStorage';
 import { logger } from '../utils/logger';
 import { bleService } from './BLEService';
+import { heartRateService } from './HeartRateService';
+import type { HeartRateReading } from './HeartRateService';
 import { sessionRepository } from './SessionRepository';
 import { summaryComputeService } from './SummaryComputeService';
-import type { TrainingSession } from '../types/training';
+import {
+  TrainingType,
+  TrainingSession,
+  HeartRateZone,
+} from '../types/training';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function computeHRZone(hr: number, maxHR: number): HeartRateZone {
+  const pct = hr / maxHR;
+  if (pct < 0.6) return HeartRateZone.ZONE_1;
+  if (pct < 0.7) return HeartRateZone.ZONE_2;
+  if (pct < 0.8) return HeartRateZone.ZONE_3;
+  if (pct < 0.9) return HeartRateZone.ZONE_4;
+  return HeartRateZone.ZONE_5;
+}
 
 export interface RecordingSession {
   id: string;
   name: string;
+  /** Activity type chosen by user before starting. */
+  type: TrainingType;
   startTime: Date;
   endTime?: Date;
-  deviceId: string;
-  deviceName: string;
+  deviceId?: string;
+  deviceName?: string;
   status: 'recording' | 'completed' | 'failed';
   duration?: number;
 }
 
 class SessionRecordingService {
   private readonly ACTIVE_SESSION_KEY = 'active_recording_session';
-  private readonly SESSIONS_HISTORY_KEY = 'sessions_history';
+
+  /** HR readings accumulated during the current recording. */
+  private hrReadings: HeartRateReading[] = [];
 
   /**
-   * Start a new recording session
+   * Start a new recording session.
+   * Optionally wires up live HR monitoring if a BLE device is connected.
    */
   async startRecording(
     sessionName: string,
-    deviceId: string,
-    deviceName: string,
+    type: TrainingType,
+    deviceId?: string,
+    deviceName?: string,
   ): Promise<RecordingSession> {
     try {
-      logger.info('Starting recording session', { sessionName, deviceId });
+      logger.info('Starting recording session', {
+        sessionName,
+        type,
+        deviceId,
+      });
 
       // Check if there's already an active session
       const existingSession = await this.getActiveSession();
@@ -39,20 +66,33 @@ class SessionRecordingService {
         );
       }
 
-      // Create session object
       const session: RecordingSession = {
         id: `session_${Date.now()}`,
         name:
           sessionName.trim() || `Session ${new Date().toLocaleDateString()}`,
+        type,
         startTime: new Date(),
         deviceId,
         deviceName,
         status: 'recording',
       };
 
-      // TODO: Send recording start command to Polar H10
-      // For now, we'll simulate this - replace with actual BLE command
-      // await bleService.startInternalRecording();
+      // Start live HR monitoring if a BLE device is connected
+      this.hrReadings = [];
+      if (deviceId) {
+        const connectedDevice = bleService.getConnectedDevice();
+        if (connectedDevice && connectedDevice.id === deviceId) {
+          try {
+            await heartRateService.startMonitoring(connectedDevice, reading => {
+              this.hrReadings.push(reading);
+            });
+            logger.info('HR monitoring started for recording', { deviceId });
+          } catch (hrErr) {
+            // HR monitoring failure is non-fatal — session still records
+            logger.warn('Could not start HR monitoring', { hrErr });
+          }
+        }
+      }
 
       // Save session as active
       await secureWrite(this.ACTIVE_SESSION_KEY, session);
@@ -68,7 +108,8 @@ class SessionRecordingService {
   }
 
   /**
-   * Stop the current recording session
+   * Stop the current recording session.
+   * Computes HR stats from collected readings and persists to SQLite.
    */
   async stopRecording(): Promise<RecordingSession> {
     try {
@@ -79,8 +120,10 @@ class SessionRecordingService {
         throw new Error('No active recording session found');
       }
 
-      // TODO: Send recording stop command to Polar H10
-      // await bleService.stopInternalRecording();
+      // Stop HR monitoring and snapshot collected readings
+      heartRateService.stopMonitoring();
+      const hrSnapshot = [...this.hrReadings];
+      this.hrReadings = [];
 
       // Update session with end time
       const completedSession: RecordingSession = {
@@ -90,15 +133,16 @@ class SessionRecordingService {
         duration: Date.now() - new Date(activeSession.startTime).getTime(),
       };
 
-      // Remove from active sessions
+      // Remove from active storage
       await secureRemove(this.ACTIVE_SESSION_KEY);
 
-      // Persist to SQLite (no size cap)
-      await this.addToHistory(completedSession);
+      // Persist to SQLite with real type and HR data
+      await this.addToHistory(completedSession, hrSnapshot);
 
       logger.info('Recording session stopped successfully', {
         sessionId: completedSession.id,
         duration: completedSession.duration,
+        hrReadings: hrSnapshot.length,
       });
 
       return completedSession;
@@ -132,17 +176,24 @@ class SessionRecordingService {
   }
 
   /**
-   * Get session history
+   * Returns session recording history from SQLite.
+   * The old EncryptedStorage key ('sessions_history') was migrated to SQLite
+   * on first launch after the SQLite migration update.
    */
   async getSessionHistory(): Promise<RecordingSession[]> {
     try {
-      const sessions =
-        (await secureRead<RecordingSession[]>(this.SESSIONS_HISTORY_KEY)) ?? [];
-      // Convert date strings back to Date objects
-      return sessions.map((session: RecordingSession) => ({
-        ...session,
-        startTime: new Date(session.startTime),
-        endTime: session.endTime ? new Date(session.endTime) : undefined,
+      const sessions = await sessionRepository.getAll();
+      // Map TrainingSession → RecordingSession for backward-compat consumers
+      return sessions.map(s => ({
+        id: s.id,
+        name: s.title ?? String(s.type),
+        type: s.type,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        deviceId: undefined,
+        deviceName: undefined,
+        status: 'completed' as const,
+        duration: s.duration * 1000,
       }));
     } catch (error) {
       logger.error('Failed to get session history', { error });
@@ -163,13 +214,29 @@ class SessionRecordingService {
   }
 
   /**
-   * Add session to SQLite history and recompute summaries.
-   * The RecordingSession is stored as-is; downstream analytics (TRIMP etc.)
-   * are enriched by TrainingContextService when the session is read back.
+   * Add session to SQLite with real type and HR data, then recompute summaries.
    */
-  private async addToHistory(session: RecordingSession): Promise<void> {
+  private async addToHistory(
+    session: RecordingSession,
+    hrReadings: HeartRateReading[],
+  ): Promise<void> {
     try {
-      // Map RecordingSession → TrainingSession (minimal field set)
+      const avgHR =
+        hrReadings.length > 0
+          ? Math.round(
+              hrReadings.reduce((sum, r) => sum + r.heartRate, 0) /
+                hrReadings.length,
+            )
+          : 0;
+      const maxHR =
+        hrReadings.length > 0
+          ? Math.max(...hrReadings.map(r => r.heartRate))
+          : 0;
+      const minHR =
+        hrReadings.length > 0
+          ? Math.min(...hrReadings.map(r => r.heartRate))
+          : 0;
+
       const ts: TrainingSession = {
         id: session.id,
         userId: '',
@@ -177,11 +244,16 @@ class SessionRecordingService {
         startTime: session.startTime,
         endTime: session.endTime ?? session.startTime,
         duration: session.duration ? Math.round(session.duration / 1000) : 0,
-        type: 'running' as any, // Default — user can edit later
-        averageHeartRate: 0,
-        maxHeartRate: 0,
-        minHeartRate: 0,
-        heartRateData: [],
+        type: session.type,
+        averageHeartRate: avgHR,
+        maxHeartRate: maxHR,
+        minHeartRate: minHR,
+        heartRateData: hrReadings.map(r => ({
+          timestamp: r.timestamp,
+          heartRate: r.heartRate,
+          rrInterval: r.rrIntervals[0],
+          zone: computeHRZone(r.heartRate, maxHR || 190),
+        })),
         zoneSummary: [],
       };
       await sessionRepository.insert(ts, false);

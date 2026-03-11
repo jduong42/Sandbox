@@ -2,6 +2,7 @@ import {
   sessionRecordingService,
   RecordingSession,
 } from '../src/services/SessionRecordingService';
+import { TrainingType } from '../src/types/training';
 import { logger } from '../src/utils/logger';
 
 // Mock secureStorage so tests don't need native EncryptedStorage
@@ -73,12 +74,14 @@ describe('SessionRecordingService', () => {
 
       const session = await sessionRecordingService.startRecording(
         sessionName,
+        TrainingType.RUNNING,
         deviceId,
         deviceName,
       );
 
       expect(session).toMatchObject({
         name: sessionName,
+        type: TrainingType.RUNNING,
         deviceId,
         deviceName,
         status: 'recording',
@@ -96,6 +99,7 @@ describe('SessionRecordingService', () => {
       const existingSession: RecordingSession = {
         id: 'session_123',
         name: 'Existing Session',
+        type: TrainingType.RUNNING,
         startTime: new Date(),
         deviceId: 'device123',
         deviceName: 'Polar H10',
@@ -107,6 +111,7 @@ describe('SessionRecordingService', () => {
       await expect(
         sessionRecordingService.startRecording(
           'New Session',
+          TrainingType.CYCLING,
           'device456',
           'Device 2',
         ),
@@ -119,6 +124,7 @@ describe('SessionRecordingService', () => {
 
       const session = await sessionRecordingService.startRecording(
         '   ', // Empty/whitespace name
+        TrainingType.RUNNING,
         'device123',
         'Polar H10',
       );
@@ -132,6 +138,7 @@ describe('SessionRecordingService', () => {
       const activeSession: RecordingSession = {
         id: 'session_123',
         name: 'Test Session',
+        type: TrainingType.RUNNING,
         startTime: new Date(Date.now() - 60000), // 1 minute ago
         deviceId: 'device123',
         deviceName: 'Polar H10',
@@ -182,6 +189,7 @@ describe('SessionRecordingService', () => {
       const sessionData: RecordingSession = {
         id: 'session_123',
         name: 'Test Session',
+        type: TrainingType.RUNNING,
         startTime: new Date(),
         deviceId: 'device123',
         deviceName: 'Polar H10',
@@ -211,36 +219,34 @@ describe('SessionRecordingService', () => {
 
   describe('getSessionHistory', () => {
     it('should return empty array if no history', async () => {
-      mockSecureRead.mockResolvedValue(null);
+      (sessionRepository.getAll as jest.Mock).mockResolvedValue([]);
 
       const history = await sessionRecordingService.getSessionHistory();
 
       expect(history).toEqual([]);
     });
 
-    it('should return sessions from storage', async () => {
-      const historyData: RecordingSession[] = [
+    it('should return sessions from SQLite via sessionRepository', async () => {
+      const historyData = [
         {
           id: 'session_1',
-          name: 'Session 1',
-          startTime: new Date('2025-01-01'),
-          endTime: new Date('2025-01-01T01:00:00'),
-          deviceId: 'device123',
-          deviceName: 'Polar H10',
-          status: 'completed',
-          duration: 3600000,
+          title: 'Session 1',
+          type: 'running',
+          date: new Date('2025-01-01'),
+          duration: 3600,
+          averageHeartRate: 150,
         },
         {
           id: 'session_2',
-          name: 'Session 2',
-          startTime: new Date('2025-01-02'),
-          deviceId: 'device123',
-          deviceName: 'Polar H10',
-          status: 'recording',
+          title: 'Session 2',
+          type: 'cycling',
+          date: new Date('2025-01-02'),
+          duration: 2400,
+          averageHeartRate: 140,
         },
       ];
 
-      mockSecureRead.mockResolvedValue(historyData as any);
+      (sessionRepository.getAll as jest.Mock).mockResolvedValue(historyData);
 
       const history = await sessionRecordingService.getSessionHistory();
 

@@ -7,6 +7,7 @@ import {
 import { Easing } from 'react-native';
 import MainTabNavigator from './MainTabNavigator';
 import { FigmaProfileSettingsScreen } from '../screens/FigmaProfileSettingsScreen';
+import { FigmaStartSessionScreen } from '../screens/FigmaStartSessionScreen';
 import { RootStackParamList } from './NavigationTypes';
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -72,6 +73,14 @@ const RootStackNavigator: React.FC = () => {
       <Stack.Screen
         name="ProfileSettings"
         component={FigmaProfileSettingsScreen}
+        options={{
+          headerShown: false,
+          cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
+        }}
+      />
+      <Stack.Screen
+        name="StartSession"
+        component={FigmaStartSessionScreen}
         options={{
           headerShown: false,
           cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,

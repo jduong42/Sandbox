@@ -95,10 +95,21 @@ function sessionToParams(
 
 // ─── Type filter helper ───────────────────────────────────────────────────────
 
-function typeFilter(types?: TrainingType[] | null): string {
-  if (!types?.length) return '';
-  const quoted = types.map(t => `'${t}'`).join(', ');
-  return ` AND type IN (${quoted})`;
+/**
+ * Returns a SQL fragment and bound parameters for `AND type IN (?, …)`.
+ * Using positional parameters prevents SQL injection even if the runtime
+ * type values were somehow user-controlled.
+ */
+function typeFilterParam(types?: TrainingType[] | null): {
+  clause: string;
+  params: string[];
+} {
+  if (!types?.length) return { clause: '', params: [] };
+  const placeholders = types.map(() => '?').join(', ');
+  return {
+    clause: ` AND type IN (${placeholders})`,
+    params: types.map(String),
+  };
 }
 
 // ─── Repository ───────────────────────────────────────────────────────────────
@@ -157,15 +168,17 @@ class SessionRepository {
     to: Date,
     types?: TrainingType[] | null,
   ): Promise<TrainingSession[]> {
+    const { clause, params } = typeFilterParam(types);
     const sql = `
       SELECT * FROM sessions
       WHERE date >= ? AND date <= ?
-      ${typeFilter(types)}
+      ${clause}
       ORDER BY date ASC
     `;
     const result = await this.db.execute(sql, [
       from.toISOString(),
       to.toISOString(),
+      ...params,
     ]);
     return (result.rows ?? []).map(rowToSession);
   }
@@ -179,15 +192,16 @@ class SessionRepository {
     limit: number,
     types?: TrainingType[] | null,
   ): Promise<TrainingSession[]> {
+    const { clause, params } = typeFilterParam(types);
     const sql = `
       SELECT * FROM (
         SELECT * FROM sessions
-        WHERE 1=1 ${typeFilter(types)}
+        WHERE 1=1 ${clause}
         ORDER BY date DESC
         LIMIT ?
       ) ORDER BY date ASC
     `;
-    const result = await this.db.execute(sql, [limit]);
+    const result = await this.db.execute(sql, [...params, limit]);
     return (result.rows ?? []).map(rowToSession);
   }
 
@@ -198,6 +212,20 @@ class SessionRepository {
   async getAll(): Promise<TrainingSession[]> {
     const result = await this.db.execute(
       'SELECT * FROM sessions ORDER BY date ASC',
+    );
+    return (result.rows ?? []).map(rowToSession);
+  }
+
+  /**
+   * Returns sessions by a list of IDs, oldest → newest.
+   * More efficient than getAll() + JS filter when the ID set is known.
+   */
+  async getByIds(ids: string[]): Promise<TrainingSession[]> {
+    if (!ids.length) return [];
+    const placeholders = ids.map(() => '?').join(', ');
+    const result = await this.db.execute(
+      `SELECT * FROM sessions WHERE id IN (${placeholders}) ORDER BY date ASC`,
+      ids,
     );
     return (result.rows ?? []).map(rowToSession);
   }
