@@ -17,7 +17,7 @@ import { ChatMessage, Message } from '../components/figma/ChatMessage';
 import { ModelBadge } from '../components/figma/ModelBadge';
 import { AIInfoModal } from '../components/figma/AIInfoModal';
 import { llamaTextGenerationService } from '../services/LlamaTextGenerationService';
-import { createSportsPromptWithContext } from '../prompts/sportsPrompts';
+import { createSportsPromptWithContext } from '../services/prompts/sportsPrompts';
 import { trainingContextService } from '../services/TrainingContextService';
 import { useTheme } from '../theme/ThemeContext';
 

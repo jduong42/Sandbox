@@ -1,6 +1,6 @@
 import { LlamaContext, initLlama } from 'llama.rn';
 import { logger } from '../utils/logger';
-import { createSportsPrompt, PROMPT_CONFIG } from '../prompts/sportsPrompts';
+import { createSportsPrompt, PROMPT_CONFIG } from './prompts/sportsPrompts';
 import { responseLogger } from '../utils/ResponseLogger';
 
 export interface LlamaGenerationResult {

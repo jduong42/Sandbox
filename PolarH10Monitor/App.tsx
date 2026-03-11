@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import AppContainer from './src/components/AppContainer';
+import AppContainer from './src/AppContainer';
 
 function App() {
   return <AppContainer />;

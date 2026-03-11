@@ -3,19 +3,9 @@ import { darkColors } from './darkColors';
 import { spacing, borderRadius, shadows } from './layout';
 import { typography } from './typography';
 import { paperTheme } from './paperTheme';
-import {
-  homeScreenStyles,
-  bluetoothButtonStyles,
-  settingsScreenStyles,
-  trainingScreenStyles,
-} from './styles';
-import { llamaTestScreenStyles } from './llamaTestScreen';
 import { splashScreenStyles } from './splashScreen';
 import { nativeIconStyles } from './nativeIcon';
 import { errorBoundaryStyles } from './errorBoundary';
-import { logViewerScreenStyles } from './logViewerScreen';
-import { detailScreenStyles } from './detailScreen';
-import { modelSwitcherStyles } from './modelSwitcher';
 import { figmaStartSessionStyles } from './figmaStartSessionScreen';
 import { figmaStartWorkoutStyles } from './figmaStartWorkoutScreen';
 
@@ -42,19 +32,11 @@ export {
   paperTheme,
 };
 
-// Export component styles for convenience
+// Export component styles
 export {
-  homeScreenStyles,
-  bluetoothButtonStyles,
-  settingsScreenStyles,
-  trainingScreenStyles,
-  llamaTestScreenStyles,
   splashScreenStyles,
   nativeIconStyles,
   errorBoundaryStyles,
-  logViewerScreenStyles,
-  detailScreenStyles,
-  modelSwitcherStyles,
   figmaStartSessionStyles,
   figmaStartWorkoutStyles,
 };

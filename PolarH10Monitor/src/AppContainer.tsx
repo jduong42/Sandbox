@@ -4,12 +4,12 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaperProvider } from 'react-native-paper';
 import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import RootStackNavigator from '../navigation/RootStackNavigator';
-import SplashScreen from '../screens/SplashScreen';
-import { theme } from '../theme';
-import { ThemeProvider } from '../theme/ThemeContext';
-import { AuthProvider } from '../context/AuthContext';
-import { databaseService } from '../services/DatabaseService';
+import RootStackNavigator from './navigation/RootStackNavigator';
+import SplashScreen from './screens/SplashScreen';
+import { theme } from './theme';
+import { ThemeProvider } from './theme/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
+import { databaseService } from './services/DatabaseService';
 
 const AppContainer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
