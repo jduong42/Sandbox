@@ -2,6 +2,9 @@ import { LlamaContext, initLlama } from 'llama.rn';
 import { logger } from '../utils/logger';
 import { createSportsPrompt, PROMPT_CONFIG } from './prompts/sportsPrompts';
 import { responseLogger } from '../utils/ResponseLogger';
+import { Platform } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
+import RNFS from 'react-native-fs';
 
 export interface LlamaGenerationResult {
   success: boolean;
@@ -17,11 +20,19 @@ export interface LlamaGenerationConfig {
   stopTokens: string[];
 }
 
+export interface MemoryStats {
+  totalMB: number;
+  budgetMB: number;
+  requiredMB: number;
+}
+
 class LlamaTextGenerationService {
   private static instance: LlamaTextGenerationService;
   private context: LlamaContext | null = null;
   private isInitialized = false;
+  private isInferencing = false;
   private modelPath: string | null = null;
+  public memoryStats: MemoryStats | null = null;
 
   private constructor() {}
 
@@ -48,7 +59,36 @@ class LlamaTextGenerationService {
       const MODEL_FILENAME = 'model_q4km.gguf';
       this.modelPath =
         modelPath ||
-        `${require('react-native-fs').MainBundlePath}/${MODEL_FILENAME}`;
+        `${RNFS.MainBundlePath}/${MODEL_FILENAME}`;
+
+      // Memory constraint check (crash prevention)
+      // 60% of total device RAM budget rule
+      try {
+        const fileStat = await RNFS.stat(this.modelPath);
+        const fileSizeMB = fileStat.size / (1024 * 1024);
+        const requiredMemoryMB = fileSizeMB * 1.5; // File size x 1.5 for KV cache and activations
+        
+        const totalMemoryMB = await DeviceInfo.getTotalMemory() / (1024 * 1024);
+        const memoryBudgetMB = totalMemoryMB * 0.6; // 60% of device RAM
+
+        this.memoryStats = {
+          totalMB: totalMemoryMB,
+          budgetMB: memoryBudgetMB,
+          requiredMB: requiredMemoryMB
+        };
+
+        logger.info(`🧠 Memory check - Total RAM: ${Math.round(totalMemoryMB)}MB, Budget: ${Math.round(memoryBudgetMB)}MB, Required: ${Math.round(requiredMemoryMB)}MB`);
+
+        if (requiredMemoryMB > memoryBudgetMB) {
+          logger.error('🧠 Memory budget exceeded! OS will likely kill the app. Initialization blocked.');
+          throw new Error(`Device memory too low for local AI. Required ${Math.round(requiredMemoryMB)}MB, available budget ${Math.round(memoryBudgetMB)}MB.`);
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message.includes('Device memory too low')) {
+          throw e; // Rethrow memory budget error
+        }
+        logger.warn('Could not perform memory size check prior to load (file might not exist yet).');
+      }
 
       logger.info(`📁 Model path: ${this.modelPath}`);
       logger.info('🔄 Creating Llama context...');
@@ -59,7 +99,8 @@ class LlamaTextGenerationService {
         n_ctx: 2048, // sufficient for context block + answer; smaller KV cache = faster init
         n_threads: 6, // more CPU threads = faster prefill and decode
         n_batch: 512, // larger batch = faster prompt processing (lower TTFT)
-        n_gpu_layers: -1, // offload all layers to Metal GPU on iOS (biggest speed win)
+        // Fallback to 0 GPU layers on Android to prevent flash_attention crashes, use Metal (-1) on iOS
+        n_gpu_layers: Platform.OS === 'ios' ? -1 : 0, 
         use_mlock: false, // don't lock memory to RAM
         use_mmap: true, // use memory mapping for efficiency
       });
@@ -99,6 +140,16 @@ class LlamaTextGenerationService {
     prompt: string,
     maxTokens: number = 150,
   ): Promise<LlamaGenerationResult> {
+    if (this.isInferencing) {
+      return {
+        success: false,
+        generatedText: '',
+        tokenCount: 0,
+        processingTime: 0,
+        error: 'Model is currently busy',
+      };
+    }
+    
     const startTime = Date.now();
 
     if (!this.isInitialized || !this.context) {
@@ -111,6 +162,7 @@ class LlamaTextGenerationService {
       };
     }
 
+    this.isInferencing = true;
     try {
       logger.info(
         `🏃‍♂️ Generating sports advice for: "${prompt.substring(0, 50)}..."`,
@@ -180,6 +232,8 @@ class LlamaTextGenerationService {
         processingTime,
         error: error instanceof Error ? error.message : 'Generation failed',
       };
+    } finally {
+      this.isInferencing = false;
     }
   }
 
@@ -193,6 +247,16 @@ class LlamaTextGenerationService {
     onToken: (token: string) => void,
     userQuery?: string,
   ): Promise<LlamaGenerationResult> {
+    if (this.isInferencing) {
+      return {
+        success: false,
+        generatedText: '',
+        tokenCount: 0,
+        processingTime: 0,
+        error: 'Model is currently busy processing another request.',
+      };
+    }
+    
     const startTime = Date.now();
 
     if (!this.isInitialized || !this.context) {
@@ -205,6 +269,7 @@ class LlamaTextGenerationService {
       };
     }
 
+    this.isInferencing = true;
     try {
       logger.info('🧠 Streaming text generation started...');
 
@@ -255,6 +320,8 @@ class LlamaTextGenerationService {
         processingTime,
         error: error instanceof Error ? error.message : 'Generation failed',
       };
+    } finally {
+      this.isInferencing = false;
     }
   }
 
@@ -265,6 +332,15 @@ class LlamaTextGenerationService {
     prompt: string,
     config: LlamaGenerationConfig,
   ): Promise<LlamaGenerationResult> {
+    if (this.isInferencing) {
+      return {
+        success: false,
+        generatedText: '',
+        tokenCount: 0,
+        processingTime: 0,
+        error: 'Model is currently busy',
+      };
+    }
     const startTime = Date.now();
 
     if (!this.isInitialized || !this.context) {
@@ -277,6 +353,7 @@ class LlamaTextGenerationService {
       };
     }
 
+    this.isInferencing = true;
     try {
       logger.info(`🧠 Generating text with custom config...`);
 
@@ -309,6 +386,8 @@ class LlamaTextGenerationService {
         processingTime,
         error: error instanceof Error ? error.message : 'Generation failed',
       };
+    } finally {
+      this.isInferencing = false;
     }
   }
 

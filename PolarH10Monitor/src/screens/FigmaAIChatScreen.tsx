@@ -16,9 +16,7 @@ import { figmaTheme as t } from '../theme/figmaTheme';
 import { ChatMessage, Message } from '../components/figma/ChatMessage';
 import { ModelBadge } from '../components/figma/ModelBadge';
 import { AIInfoModal } from '../components/figma/AIInfoModal';
-import { llamaTextGenerationService } from '../services/LlamaTextGenerationService';
-import { createSportsPromptWithContext } from '../services/prompts/sportsPrompts';
-import { trainingContextService } from '../services/TrainingContextService';
+import { useAICoachStore } from '../store/aiCoachStore';
 import { useTheme } from '../theme/ThemeContext';
 
 const MODEL_DISPLAY_NAME = 'Llama 3.2 3B - Sports Science';
@@ -55,32 +53,30 @@ const SUMMARY_RANGES = [
   },
 ];
 
-const INITIAL_MESSAGE: Message = {
-  id: 0,
-  role: 'assistant',
-  content:
-    "Hi! I'm your local AI fitness assistant. How can I help you with your fitness journey today?",
-};
-
 export function FigmaAIChatScreen() {
   const { c } = useTheme();
   const route =
     useRoute<RouteProp<{ FigmaAIChat: { prefill?: string } }, 'FigmaAIChat'>>();
   const prefill = (route.params as any)?.prefill as string | undefined;
-  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
+
+  const { 
+    messages, 
+    isGenerating, 
+    isModelReady, 
+    initError,
+    memoryStats, 
+    initializeModel, 
+    sendMessage 
+  } = useAICoachStore();
+
   const [inputValue, setInputValue] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isModelReady, setIsModelReady] = useState(false);
-  const [initError, setInitError] = useState<string | null>(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-  const nextId = useRef(1);
   const prefillSent = useRef(false);
-  // Token batching — accumulate tokens in a ref; flush to state at 60 ms
-  // instead of on every single token (~300 → ~12 Markdown re-renders per reply).
-  const accumulatedRef = useRef('');
-  const assistantIdRef = useRef<number | null>(null);
-  const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    initializeModel();
+  }, [initializeModel]);
 
   // Auto-send prefill once model is ready (handles both "model already ready"
   // and "model still initialising when navigation happens" cases)
@@ -98,26 +94,6 @@ export function FigmaAIChatScreen() {
     if (prefill) setInputValue(prefill);
   }, [prefill]);
 
-  useEffect(() => {
-    llamaTextGenerationService
-      .initialize()
-      .then(success => {
-        setIsModelReady(success);
-        if (!success) setInitError('Model failed to load');
-      })
-      .catch(err => {
-        setInitError(String(err));
-        setIsModelReady(false);
-      });
-  }, []);
-
-  // Cancel any in-flight flush timer on unmount.
-  useEffect(() => {
-    return () => {
-      if (flushTimerRef.current) clearInterval(flushTimerRef.current);
-    };
-  }, []);
-
   const scrollToBottom = () => {
     setTimeout(
       () => scrollViewRef.current?.scrollToEnd({ animated: true }),
@@ -125,116 +101,21 @@ export function FigmaAIChatScreen() {
     );
   };
 
-  // The model generates only the JSON answer value; strip closing `"}` and unescape.
-  const parseJsonResponse = (raw: string): string => {
-    const stripped = raw.replace(/"\s*\}\s*$/, '').trim();
-    try {
-      return JSON.parse(`"${stripped}"`);
-    } catch {
-      return stripped
-        .replace(/\\n/g, '\n')
-        .replace(/\\t/g, '\t')
-        .replace(/\\"/g, '"')
-        .replace(/\\\\/g, '\\');
-    }
-  };
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages.length]);
 
   const handleSend = useCallback(
     async (overrideText?: string) => {
       const text = (overrideText ?? inputValue).trim();
       if (!text || isGenerating) return;
-
-      const userMsg: Message = {
-        id: ++nextId.current,
-        role: 'user',
-        content: text,
-      };
-
-      const assistantId = ++nextId.current;
-      const assistantPlaceholder: Message = {
-        id: assistantId,
-        role: 'assistant',
-        content: '',
-        isStreaming: true,
-      };
-
-      setMessages(prev => [...prev, userMsg, assistantPlaceholder]);
+      
       if (!overrideText) setInputValue('');
-      setIsGenerating(true);
       scrollToBottom();
-
-      try {
-        const { contextBlock } =
-          await trainingContextService.buildContextForQuery(text);
-        const prompt = createSportsPromptWithContext(text, contextBlock);
-        accumulatedRef.current = '';
-        assistantIdRef.current = assistantId;
-
-        // Batch token updates to ~16 fps — avoids a full Markdown re-render on
-        // every single token (~300 renders reduced to ~12 per reply).
-        flushTimerRef.current = setInterval(() => {
-          const display = parseJsonResponse(accumulatedRef.current);
-          setMessages(prev =>
-            prev.map(m =>
-              m.id === assistantIdRef.current
-                ? { ...m, content: display, isStreaming: true }
-                : m,
-            ),
-          );
-          scrollViewRef.current?.scrollToEnd({ animated: false });
-        }, 60);
-
-        const result = await llamaTextGenerationService.generateTextStreaming(
-          prompt,
-          {
-            maxTokens: 1024,
-            temperature: 0.4,
-            stopTokens: ['"}', '<|im_end|>', '</s>'],
-          },
-          (token: string) => {
-            accumulatedRef.current += token; // ref-only; no re-render per token
-          },
-          text,
-        );
-
-        clearInterval(flushTimerRef.current);
-        flushTimerRef.current = null;
-
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === assistantId
-              ? {
-                  ...m,
-                  content: result.success
-                    ? parseJsonResponse(result.generatedText)
-                    : "I'm having trouble responding right now. Please try again.",
-                  isStreaming: false,
-                }
-              : m,
-          ),
-        );
-      } catch {
-        if (flushTimerRef.current) {
-          clearInterval(flushTimerRef.current);
-          flushTimerRef.current = null;
-        }
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === assistantId
-              ? {
-                  ...m,
-                  content: 'Sorry, I encountered an error. Please try again.',
-                  isStreaming: false,
-                }
-              : m,
-          ),
-        );
-      } finally {
-        setIsGenerating(false);
-        scrollToBottom();
-      }
+      
+      await sendMessage(text);
     },
-    [inputValue, isGenerating],
+    [inputValue, isGenerating, sendMessage]
   );
 
   const handleQuickSend = useCallback(
@@ -286,6 +167,11 @@ export function FigmaAIChatScreen() {
               modelName={MODEL_DISPLAY_NAME}
               onInfoClick={() => setShowInfoModal(true)}
             />
+            {memoryStats && (
+              <Text style={{ color: c.muted, fontSize: 10, textAlign: 'center', marginTop: 4 }}>
+                RAM: {Math.round(memoryStats.requiredMB)}MB / {Math.round(memoryStats.budgetMB)}MB
+              </Text>
+            )}
           </View>
 
           {/* Messages */}
