@@ -57,9 +57,7 @@ class LlamaTextGenerationService {
       // Use provided path or default bundle path (fine-tuned model)
       // 👇 Update this filename to match your new model's .gguf filename
       const MODEL_FILENAME = 'model_q4km.gguf';
-      this.modelPath =
-        modelPath ||
-        `${RNFS.MainBundlePath}/${MODEL_FILENAME}`;
+      this.modelPath = modelPath || `${RNFS.MainBundlePath}/${MODEL_FILENAME}`;
 
       // Memory constraint check (crash prevention)
       // 60% of total device RAM budget rule
@@ -67,27 +65,42 @@ class LlamaTextGenerationService {
         const fileStat = await RNFS.stat(this.modelPath);
         const fileSizeMB = fileStat.size / (1024 * 1024);
         const requiredMemoryMB = fileSizeMB * 1.5; // File size x 1.5 for KV cache and activations
-        
-        const totalMemoryMB = await DeviceInfo.getTotalMemory() / (1024 * 1024);
+
+        const totalMemoryMB =
+          (await DeviceInfo.getTotalMemory()) / (1024 * 1024);
         const memoryBudgetMB = totalMemoryMB * 0.6; // 60% of device RAM
 
         this.memoryStats = {
           totalMB: totalMemoryMB,
           budgetMB: memoryBudgetMB,
-          requiredMB: requiredMemoryMB
+          requiredMB: requiredMemoryMB,
         };
 
-        logger.info(`🧠 Memory check - Total RAM: ${Math.round(totalMemoryMB)}MB, Budget: ${Math.round(memoryBudgetMB)}MB, Required: ${Math.round(requiredMemoryMB)}MB`);
+        logger.info(
+          `🧠 Memory check - Total RAM: ${Math.round(
+            totalMemoryMB,
+          )}MB, Budget: ${Math.round(memoryBudgetMB)}MB, Required: ${Math.round(
+            requiredMemoryMB,
+          )}MB`,
+        );
 
         if (requiredMemoryMB > memoryBudgetMB) {
-          logger.error('🧠 Memory budget exceeded! OS will likely kill the app. Initialization blocked.');
-          throw new Error(`Device memory too low for local AI. Required ${Math.round(requiredMemoryMB)}MB, available budget ${Math.round(memoryBudgetMB)}MB.`);
+          logger.error(
+            '🧠 Memory budget exceeded! OS will likely kill the app. Initialization blocked.',
+          );
+          throw new Error(
+            `Device memory too low for local AI. Required ${Math.round(
+              requiredMemoryMB,
+            )}MB, available budget ${Math.round(memoryBudgetMB)}MB.`,
+          );
         }
       } catch (e) {
         if (e instanceof Error && e.message.includes('Device memory too low')) {
           throw e; // Rethrow memory budget error
         }
-        logger.warn('Could not perform memory size check prior to load (file might not exist yet).');
+        logger.warn(
+          'Could not perform memory size check prior to load (file might not exist yet).',
+        );
       }
 
       logger.info(`📁 Model path: ${this.modelPath}`);
@@ -100,7 +113,7 @@ class LlamaTextGenerationService {
         n_threads: 6, // more CPU threads = faster prefill and decode
         n_batch: 512, // larger batch = faster prompt processing (lower TTFT)
         // Fallback to 0 GPU layers on Android to prevent flash_attention crashes, use Metal (-1) on iOS
-        n_gpu_layers: Platform.OS === 'ios' ? -1 : 0, 
+        n_gpu_layers: Platform.OS === 'ios' ? -1 : 0,
         use_mlock: false, // don't lock memory to RAM
         use_mmap: true, // use memory mapping for efficiency
       });
@@ -149,7 +162,7 @@ class LlamaTextGenerationService {
         error: 'Model is currently busy',
       };
     }
-    
+
     const startTime = Date.now();
 
     if (!this.isInitialized || !this.context) {
@@ -256,7 +269,7 @@ class LlamaTextGenerationService {
         error: 'Model is currently busy processing another request.',
       };
     }
-    
+
     const startTime = Date.now();
 
     if (!this.isInitialized || !this.context) {
@@ -388,6 +401,22 @@ class LlamaTextGenerationService {
       };
     } finally {
       this.isInferencing = false;
+    }
+  }
+
+  /**
+   * Abort the active generation process
+   */
+  async abortGeneration(): Promise<void> {
+    if (this.isInferencing && this.context) {
+      try {
+        await this.context.stopCompletion();
+        logger.info('🦙 Generation aborted by user.');
+      } catch (err) {
+        logger.error('🦙 Failed to abort generation:', err);
+      } finally {
+        this.isInferencing = false;
+      }
     }
   }
 

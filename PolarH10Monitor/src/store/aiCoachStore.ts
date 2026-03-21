@@ -7,7 +7,8 @@ import { createSportsPromptWithContext } from '../services/prompts/sportsPrompts
 export const INITIAL_MESSAGE: Message = {
   id: 0,
   role: 'assistant',
-  content: "Hi! I'm your local AI fitness assistant. How can I help you with your fitness journey today?",
+  content:
+    "Hi! I'm your local AI fitness assistant. How can I help you with your fitness journey today?",
 };
 
 const parseJsonResponse = (raw: string): string => {
@@ -35,6 +36,7 @@ interface AICoachState {
   setInitError: (error: string | null) => void;
   clearState: () => void;
   sendMessage: (text: string) => Promise<void>;
+  stopGeneration: () => Promise<void>;
   initializeModel: () => Promise<void>;
 }
 
@@ -45,22 +47,30 @@ export const useAICoachStore = create<AICoachState>((set, get) => ({
   initError: null,
   memoryStats: null,
 
-  setIsModelReady: (isModelReady) => set({ isModelReady }),
-  setInitError: (initError) => set({ initError }),
+  setIsModelReady: isModelReady => set({ isModelReady }),
+  setInitError: initError => set({ initError }),
 
-  clearState: () => set({
-    messages: [INITIAL_MESSAGE],
-    isGenerating: false,
-    initError: null,
-  }),
+  clearState: () =>
+    set({
+      messages: [INITIAL_MESSAGE],
+      isGenerating: false,
+      initError: null,
+    }),
+
+  stopGeneration: async () => {
+    if (!get().isGenerating) return;
+    console.log('Stopping AI generation explicitly...');
+    await llamaTextGenerationService.abortGeneration();
+    set({ isGenerating: false });
+  },
 
   initializeModel: async () => {
     try {
       const success = await llamaTextGenerationService.initialize();
-      set({ 
-        isModelReady: success, 
+      set({
+        isModelReady: success,
         initError: success ? null : 'Model failed to load',
-        memoryStats: llamaTextGenerationService.memoryStats
+        memoryStats: llamaTextGenerationService.memoryStats,
       });
     } catch (err) {
       set({ isModelReady: false, initError: String(err) });
@@ -85,18 +95,19 @@ export const useAICoachStore = create<AICoachState>((set, get) => ({
       isStreaming: true,
     };
 
-    set({ 
+    set({
       messages: [...state.messages, userMsg, assistantPlaceholder],
-      isGenerating: true 
+      isGenerating: true,
     });
 
     try {
-      const { contextBlock } = await trainingContextService.buildContextForQuery(text);
+      const { contextBlock } =
+        await trainingContextService.buildContextForQuery(text);
       const prompt = createSportsPromptWithContext(text, contextBlock);
-      
+
       let accumulatedRaw = '';
       let lastUpdate = Date.now();
-      
+
       const result = await llamaTextGenerationService.generateTextStreaming(
         prompt,
         {
@@ -106,24 +117,24 @@ export const useAICoachStore = create<AICoachState>((set, get) => ({
         },
         (token: string) => {
           accumulatedRaw += token;
-          
+
           const now = Date.now();
           if (now - lastUpdate > 60) {
             lastUpdate = now;
             const display = parseJsonResponse(accumulatedRaw);
-            set((s) => ({
+            set(s => ({
               messages: s.messages.map(m =>
                 m.id === assistantId
                   ? { ...m, content: display, isStreaming: true }
-                  : m
-              )
+                  : m,
+              ),
             }));
           }
         },
-        text
+        text,
       );
 
-      set((s) => ({
+      set(s => ({
         messages: s.messages.map(m =>
           m.id === assistantId
             ? {
@@ -133,11 +144,10 @@ export const useAICoachStore = create<AICoachState>((set, get) => ({
                   : "I'm having trouble responding right now. Please try again.",
                 isStreaming: false,
               }
-            : m
+            : m,
         ),
-        isGenerating: false
+        isGenerating: false,
       }));
-
     } catch (err: any) {
       // Don't trigger RN RedBox for known user-facing errors
       if (err?.message?.includes('Model is currently busy')) {
@@ -145,19 +155,20 @@ export const useAICoachStore = create<AICoachState>((set, get) => ({
       } else {
         console.error(err);
       }
-      
-      set((s) => ({
+
+      set(s => ({
         messages: s.messages.map(m =>
           m.id === assistantId
             ? {
                 ...m,
-                content: "I'm having trouble responding right now. Please try again.",
+                content:
+                  "I'm having trouble responding right now. Please try again.",
                 isStreaming: false,
               }
-            : m
+            : m,
         ),
-        isGenerating: false
+        isGenerating: false,
       }));
     }
-  }
+  },
 }));

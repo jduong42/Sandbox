@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 
 interface StatCardProps {
@@ -9,6 +9,7 @@ interface StatCardProps {
   goal?: string;
   unit?: string;
   color: string;
+  onPress?: () => void;
 }
 
 export function StatCard({
@@ -18,14 +19,20 @@ export function StatCard({
   goal,
   unit,
   color,
+  onPress,
 }: StatCardProps) {
   const { c } = useTheme();
+
+  const Container = onPress ? TouchableOpacity : View;
+
   return (
-    <View
+    <Container
       style={[
         styles.card,
         { backgroundColor: c.surface, borderColor: c.border },
       ]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
     >
       <View style={styles.header}>
         <Text style={styles.icon}>{icon}</Text>
@@ -36,7 +43,7 @@ export function StatCard({
         <Text style={[styles.value, { color: c.foreground }]}>{value}</Text>
         {unit && <Text style={[styles.unit, { color: c.muted }]}> {unit}</Text>}
       </View>
-    </View>
+    </Container>
   );
 }
 

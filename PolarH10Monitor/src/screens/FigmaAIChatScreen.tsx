@@ -59,14 +59,14 @@ export function FigmaAIChatScreen() {
     useRoute<RouteProp<{ FigmaAIChat: { prefill?: string } }, 'FigmaAIChat'>>();
   const prefill = (route.params as any)?.prefill as string | undefined;
 
-  const { 
-    messages, 
-    isGenerating, 
-    isModelReady, 
+  const {
+    messages,
+    isGenerating,
+    isModelReady,
     initError,
-    memoryStats, 
-    initializeModel, 
-    sendMessage 
+    memoryStats,
+    initializeModel,
+    sendMessage,
   } = useAICoachStore();
 
   const [inputValue, setInputValue] = useState('');
@@ -78,20 +78,11 @@ export function FigmaAIChatScreen() {
     initializeModel();
   }, [initializeModel]);
 
-  // Auto-send prefill once model is ready (handles both "model already ready"
-  // and "model still initialising when navigation happens" cases)
+  // Just prepopulate the text box, don't auto-send
   useEffect(() => {
-    if (prefill && isModelReady && !prefillSent.current) {
-      prefillSent.current = true;
-      handleSend(prefill);
+    if (prefill) {
+      setInputValue(prefill);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefill, isModelReady]);
-
-  // Reset sent-guard if a new prefill arrives (e.g. user taps banner again)
-  useEffect(() => {
-    prefillSent.current = false;
-    if (prefill) setInputValue(prefill);
   }, [prefill]);
 
   const scrollToBottom = () => {
@@ -109,13 +100,13 @@ export function FigmaAIChatScreen() {
     async (overrideText?: string) => {
       const text = (overrideText ?? inputValue).trim();
       if (!text || isGenerating) return;
-      
+
       if (!overrideText) setInputValue('');
       scrollToBottom();
-      
+
       await sendMessage(text);
     },
-    [inputValue, isGenerating, sendMessage]
+    [inputValue, isGenerating, sendMessage],
   );
 
   const handleQuickSend = useCallback(
@@ -168,8 +159,16 @@ export function FigmaAIChatScreen() {
               onInfoClick={() => setShowInfoModal(true)}
             />
             {memoryStats && (
-              <Text style={{ color: c.muted, fontSize: 10, textAlign: 'center', marginTop: 4 }}>
-                RAM: {Math.round(memoryStats.requiredMB)}MB / {Math.round(memoryStats.budgetMB)}MB
+              <Text
+                style={{
+                  color: c.muted,
+                  fontSize: 10,
+                  textAlign: 'center',
+                  marginTop: 4,
+                }}
+              >
+                RAM: {Math.round(memoryStats.requiredMB)}MB /{' '}
+                {Math.round(memoryStats.budgetMB)}MB
               </Text>
             )}
           </View>

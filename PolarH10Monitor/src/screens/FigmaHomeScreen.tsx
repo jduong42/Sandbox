@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import {
   View,
   Text,
@@ -7,6 +8,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { ActivityRing } from '../components/figma/ActivityRing';
@@ -19,6 +21,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { getRestingCaloriesToday, getTDEE } from '../utils/CalorieCalculator';
 import { ProfileModal } from '../components/figma/ProfileModal';
 import { useAuth } from '../context/AuthContext';
+import { useAICoachStore } from '../store/aiCoachStore';
 import {
   usePhysiologyStore,
   isPhysiologyComplete,
@@ -64,6 +67,9 @@ function formatSessionTime(date: Date | string | undefined): string {
 export function FigmaHomeScreen() {
   const { c } = useTheme();
   const { user } = useAuth();
+  const navigation = useNavigation<any>();
+  const isGenerating = useAICoachStore(s => s.isGenerating);
+  const stopGeneration = useAICoachStore(s => s.stopGeneration);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const { settings, isLoaded, initialize } = usePhysiologyStore();
   const [recentActivities, setRecentActivities] = useState<
@@ -175,6 +181,32 @@ export function FigmaHomeScreen() {
     day: 'numeric',
   });
 
+  const handleDeepLink = useCallback(
+    (prefill: string) => {
+      if (isGenerating) {
+        Alert.alert(
+          'Trainer is busy',
+          'The AI is currently typing a response. Do you want to stop it and ask about this metric instead?',
+          [
+            { text: 'Wait', style: 'cancel' },
+            {
+              text: 'Interrupt',
+              style: 'destructive',
+              onPress: () => {
+                stopGeneration();
+                navigation.navigate('FigmaAIChat', { prefill });
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      navigation.navigate('FigmaAIChat', { prefill });
+    },
+    [isGenerating, stopGeneration, navigation],
+  );
+
   return (
     <LinearGradient colors={c.background} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -183,7 +215,7 @@ export function FigmaHomeScreen() {
           <View style={styles.header}>
             <View>
               <Text style={[styles.greeting, { color: c.muted }]}>
-                {greeting}
+                {greeting},
               </Text>
               <Text style={[styles.username, { color: c.foreground }]}>
                 {user?.name ?? 'Alex'}
@@ -325,11 +357,16 @@ export function FigmaHomeScreen() {
             <View style={styles.statsGrid}>
               <View style={styles.statsRow}>
                 <StatCard
-                  icon="�"
+                  icon="🔥"
                   label="Calories"
                   value={String(restingCalories)}
                   goal={String(tdee)}
                   color="#fb923c"
+                  onPress={() =>
+                    handleDeepLink(
+                      `I have burned ${restingCalories} out of ${tdee} calories today. How should I adjust my nutrition?`,
+                    )
+                  }
                 />
                 <View style={styles.statsGap} />
                 <StatCard
@@ -337,6 +374,11 @@ export function FigmaHomeScreen() {
                   label="Active Time"
                   value={exerciseMinutes > 0 ? `${exerciseMinutes}m` : '--'}
                   color="#c084fc"
+                  onPress={() =>
+                    handleDeepLink(
+                      `My active time today is ${exerciseMinutes} minutes. Is this a good amount for active recovery?`,
+                    )
+                  }
                 />
               </View>
             </View>

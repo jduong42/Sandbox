@@ -6,9 +6,17 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Alert,
+  Pressable,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { ACWRResult, ACWRRisk } from '../../utils/ACWRCalculator';
 import { useTheme, ThemeColors } from '../../theme/ThemeContext';
+import { useAICoachStore } from '../../store/aiCoachStore';
+
+const BOTTOM_INSET = initialWindowMetrics?.insets?.bottom ?? 34;
 
 // ─── Risk zone config ─────────────────────────────────────────────────────────
 
@@ -39,6 +47,10 @@ interface Props {
 
 export function TrainingLoadModal({ visible, result, onClose }: Props) {
   const { c } = useTheme();
+  const navigation = useNavigation<any>();
+  const isGenerating = useAICoachStore(s => s.isGenerating);
+  const stopGeneration = useAICoachStore(s => s.stopGeneration);
+
   const risk = RISK_CONFIG[result.risk];
   const monotonyLabel =
     result.monotony < 1
@@ -46,6 +58,40 @@ export function TrainingLoadModal({ visible, result, onClose }: Props) {
       : result.monotony < 2
       ? 'Moderate variety'
       : 'Low variety';
+
+  const handleDiscuss = () => {
+    const navigateToChat = () => {
+      onClose();
+      navigation.navigate('FigmaAIChat', {
+        prefill: `My current ACWR is ${result.acwr?.toFixed(2)} (${
+          risk.label
+        }). My acute load is ${result.acuteLoad} and chronic load is ${
+          result.chronicLoad
+        }. Can you explain what this means for my upcoming training?`,
+      });
+    };
+
+    if (isGenerating) {
+      Alert.alert(
+        'Trainer is busy',
+        'The AI is currently typing a response. Do you want to stop it and ask about this metric instead?',
+        [
+          { text: 'Wait', style: 'cancel' },
+          {
+            text: 'Interrupt',
+            style: 'destructive',
+            onPress: () => {
+              stopGeneration();
+              navigateToChat();
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    navigateToChat();
+  };
 
   return (
     <Modal
@@ -73,7 +119,10 @@ export function TrainingLoadModal({ visible, result, onClose }: Props) {
         </View>
 
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: Math.max(BOTTOM_INSET + 24, 60) },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           {/* ── ACWR hero ─────────────────────────────────────────────────── */}
@@ -210,6 +259,23 @@ export function TrainingLoadModal({ visible, result, onClose }: Props) {
           />
 
           {/* ── Footer ───────────────────────────────────────────────────── */}
+
+          <Pressable
+            style={styles.discussButtonContainer}
+            onPress={handleDiscuss}
+          >
+            <LinearGradient
+              colors={['#a855f7', '#ec4899']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.discussGradient}
+            >
+              <Text style={styles.discussButtonText}>
+                Discuss My Training Load with AI
+              </Text>
+            </LinearGradient>
+          </Pressable>
+
           <Text style={[styles.footer, { color: c.muted }]}>
             Based on {result.daysOfData} training day
             {result.daysOfData !== 1 ? 's' : ''} logged in the last 28 days
@@ -429,9 +495,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
   },
+  discussButtonContainer: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginTop: 12,
+  },
+  discussGradient: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 64,
+  },
+  discussButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
   footer: {
     fontSize: 12,
     textAlign: 'center',
-    paddingVertical: 8,
+    paddingVertical: 16,
   },
 });
