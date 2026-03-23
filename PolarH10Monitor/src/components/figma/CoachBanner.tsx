@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useACWR } from '../../hooks/useACWR';
 import { ACWRRisk } from '../../utils/ACWRCalculator';
 import { calculateStreak } from '../../utils/StreakCalculator';
+import { useAICoachStore } from '../../store/aiCoachStore';
 
 // ─── Message logic ────────────────────────────────────────────────────────────
 
@@ -104,10 +105,19 @@ export function CoachBanner() {
   const { c } = useTheme();
   const navigation = useNavigation<any>();
   const { result: acwrResult, enrichedSessions, reload } = useACWR(90);
+
+  const {
+    isModelReady,
+    morningHuddle,
+    isGeneratingHuddle,
+    generateMorningHuddle,
+    initializeModel,
+  } = useAICoachStore();
+
   const [banner, setBanner] = useState<BannerState>({
     color: '#6366f1',
     icon: '💡',
-    message: 'Loading your coaching summary…',
+    message: 'Analyzing your training data...',
     suggestion: 'What should I do today?',
   });
 
@@ -141,6 +151,20 @@ export function CoachBanner() {
     }, [reload]),
   );
 
+  // Initialize model in the background if not done already
+  useEffect(() => {
+    if (!isModelReady) {
+      initializeModel();
+    }
+  }, [isModelReady, initializeModel]);
+
+  // Trigger morning huddle generation once model is ready and we don't have one yet
+  useEffect(() => {
+    if (isModelReady && morningHuddle === null && !isGeneratingHuddle) {
+      generateMorningHuddle();
+    }
+  }, [isModelReady, morningHuddle, isGeneratingHuddle, generateMorningHuddle]);
+
   const handleAskCoach = () => {
     navigation.navigate('FigmaAIChat', { prefill: banner.suggestion });
   };
@@ -160,8 +184,13 @@ export function CoachBanner() {
         <Text style={styles.icon}>{banner.icon}</Text>
         <View style={styles.textBlock}>
           <Text style={[styles.message, { color: c.foreground }]}>
-            {banner.message}
+            {morningHuddle ? morningHuddle : banner.message}
           </Text>
+          {isGeneratingHuddle && !morningHuddle && (
+            <Text style={[styles.generatingHint, { color: c.foreground }]}>
+              ✨ Crafting your personalized morning huddle...
+            </Text>
+          )}
           <Text style={[styles.cta, { color: banner.color }]}>
             Ask coach: "{banner.suggestion}" ›
           </Text>
@@ -202,6 +231,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '500',
+  },
+  generatingHint: {
+    fontSize: 11,
+    opacity: 0.6,
+    fontStyle: 'italic',
   },
   cta: {
     fontSize: 12,
