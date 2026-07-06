@@ -10,6 +10,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { BLEStatus } from '../components/figma/BLEStatus';
 import { StartSessionButton } from '../components/figma/StartSessionButton';
+import { LiveRecordingPanel } from '../components/figma/LiveRecordingPanel';
 import {
   TrainingSessionCard,
   TrainingSession,
@@ -18,7 +19,10 @@ import { Toast } from '../components/common/Toast';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../theme/ThemeContext';
 import { sessionRepository } from '../services/SessionRepository';
-import { sessionRecordingService } from '../services/SessionRecordingService';
+import {
+  sessionRecordingService,
+  RecordingSession,
+} from '../services/SessionRecordingService';
 import { useFocusEffect } from '@react-navigation/native';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -78,6 +82,9 @@ export function FigmaStartWorkoutScreen() {
   const { toast, show: showToast, hide: hideToast } = useToast(4000);
   const [showAllSessions, setShowAllSessions] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [activeSession, setActiveSession] = useState<RecordingSession | null>(
+    null,
+  );
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
 
   const loadSessions = useCallback(async () => {
@@ -96,6 +103,7 @@ export function FigmaStartWorkoutScreen() {
       loadSessions();
       sessionRecordingService.getActiveSession().then(active => {
         setIsRecording(!!active);
+        setActiveSession(active);
       });
     }, [loadSessions]),
   );
@@ -120,6 +128,7 @@ export function FigmaStartWorkoutScreen() {
           try {
             await sessionRecordingService.stopRecording();
             setIsRecording(false);
+            setActiveSession(null);
             await loadSessions();
             showToast('Session saved successfully', 'success');
           } catch (err) {
@@ -159,6 +168,13 @@ export function FigmaStartWorkoutScreen() {
               }}
             />
           </View>
+
+          {/* Live recording panel — current BPM, zone, timer, signal status */}
+          {isRecording && activeSession && (
+            <View style={styles.section}>
+              <LiveRecordingPanel startTime={activeSession.startTime} />
+            </View>
+          )}
 
           {/* Start Session Button */}
           <View style={styles.section}>

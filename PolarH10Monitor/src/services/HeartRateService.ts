@@ -1,6 +1,7 @@
 import { Device } from 'react-native-ble-plx';
 import { Buffer } from 'buffer';
 import { logger } from '../utils/logger';
+import { sensorCaptureLogger } from '../utils/SensorCaptureLogger';
 import { HEART_RATE_SETTINGS, HEART_RATE_VALIDATION } from '../constants/ble';
 
 // Heart Rate Service UUIDs
@@ -81,6 +82,13 @@ class HeartRateService implements HeartRateServiceInterface {
           }
 
           if (characteristic?.value) {
+            // Captures the raw byte exactly as received, before any parsing,
+            // so a decoder bug can never cause a gap in the captured file.
+            sensorCaptureLogger.capture({
+              source: 'hr',
+              deviceId: characteristic.deviceID,
+              base64: characteristic.value,
+            });
             try {
               const reading = this.parseHeartRateData(
                 characteristic.value,

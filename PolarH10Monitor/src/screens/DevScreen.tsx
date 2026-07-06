@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -34,6 +35,7 @@ import { sessionRepository } from '../services/SessionRepository';
 import { summaryComputeService } from '../services/SummaryComputeService';
 import { databaseService } from '../services/DatabaseService';
 import { usePhysiologyStore } from '../store/physiologyStore';
+import { sensorCaptureLogger } from '../utils/SensorCaptureLogger';
 
 const STORAGE_KEY = 'app-user';
 const FALLBACK_PREFIX = 'secure_fallback_';
@@ -101,6 +103,60 @@ export function DevScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [lastContextDebug, setLastContextDebug] = useState<string | null>(null);
+  const [capturing, setCapturing] = useState(sensorCaptureLogger.enabled);
+  const [captureCount, setCaptureCount] = useState(0);
+
+  const refreshCaptureCount = useCallback(async () => {
+    setCaptureCount(await sensorCaptureLogger.count());
+  }, []);
+
+  useEffect(() => {
+    refreshCaptureCount();
+  }, [refreshCaptureCount]);
+
+  // ── raw BLE sensor capture (HR + PMD ACC), for real-device verification ──
+  const handleToggleCapture = () => {
+    if (capturing) {
+      sensorCaptureLogger.stop();
+      setCapturing(false);
+    } else {
+      sensorCaptureLogger.start();
+      setCapturing(true);
+    }
+  };
+
+  const handleShareCapture = async () => {
+    try {
+      const count = await sensorCaptureLogger.count();
+      if (count === 0) {
+        Alert.alert(
+          'Nothing captured yet',
+          'Start capture, then wear the H10 and start/stop a recording session before sharing.',
+        );
+        return;
+      }
+      await Share.share({
+        url: `file://${sensorCaptureLogger.getFilePath()}`,
+        title: 'sensor_capture.jsonl',
+      });
+    } catch (e) {
+      Alert.alert('Share failed', String(e));
+    }
+  };
+
+  const handleClearCapture = () => {
+    Alert.alert('Clear captured sensor data?', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Clear',
+        style: 'destructive',
+        onPress: async () => {
+          await sensorCaptureLogger.clear();
+          await refreshCaptureCount();
+        },
+      },
+    ]);
+  };
 
   // ── seed 4 weeks of synthetic training data ─────────────────────────────
   const handleSeedData = async () => {
@@ -423,6 +479,38 @@ export function DevScreen() {
               <Text style={styles.keyValue}>{lastContextDebug}</Text>
             </View>
           )}
+        </Section>
+
+        {/* ── raw sensor capture (HR + PMD ACC) ── */}
+        <Section title="Sensor Capture (HR + PMD ACC)">
+          <Text style={styles.emptyLabel}>
+            Captures raw BLE bytes before any parsing — verifies the
+            recording/saving pipeline itself, and doubles as real fixture
+            data for PMDFrameParser tests. Start this, then wear the H10 and
+            run a normal start/stop recording session.
+          </Text>
+          <ActionButton
+            label={
+              capturing
+                ? '⏹  Stop Capture'
+                : '▶️  Start Capture (HR + PMD ACC)'
+            }
+            onPress={handleToggleCapture}
+            danger={capturing}
+          />
+          <ActionButton
+            label={`↻  Refresh Count (${captureCount} lines)`}
+            onPress={refreshCaptureCount}
+          />
+          <ActionButton
+            label="📤  Share Capture File"
+            onPress={handleShareCapture}
+          />
+          <ActionButton
+            label="🗑  Clear Capture"
+            onPress={handleClearCapture}
+            danger
+          />
         </Section>
 
         {/* ── async storage inspector ── */}

@@ -21,6 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import NativeIcon from '../components/common/NativeIcon';
 import { sessionRecordingService } from '../services/SessionRecordingService';
+import { bleService } from '../services/BLEService';
 import { useBLEScanning } from '../hooks/useBLEScanning';
 import { TrainingType } from '../types/training';
 import type { RootStackParamList } from '../navigation/NavigationTypes';
@@ -59,11 +60,14 @@ export function FigmaStartSessionScreen() {
   const handleStart = async () => {
     if (!sessionName.trim()) return;
     try {
+      const connectedDevice = isConnected ? bleService.getConnectedDevice() : null;
       await sessionRecordingService.startRecording(
         sessionName.trim(),
         selectedType,
-        undefined,
-        isConnected ? connectedDeviceName ?? undefined : undefined,
+        connectedDevice?.id,
+        connectedDevice
+          ? connectedDeviceName ?? connectedDevice.name ?? undefined
+          : undefined,
       );
       navigation.goBack();
     } catch (err) {

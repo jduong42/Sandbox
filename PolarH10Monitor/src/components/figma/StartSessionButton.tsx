@@ -18,6 +18,8 @@ export function StartSessionButton({
         style={styles.stopButton}
         onPress={onClick}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Stop and save recording"
       >
         <NativeIcon name="stop" size={24} color="#ffffff" />
         <Text style={styles.buttonText}>Stop Recording</Text>

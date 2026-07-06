@@ -1,25 +1,27 @@
+import type { Device } from 'react-native-ble-plx';
 import { secureWrite, secureRead, secureRemove } from '../utils/secureStorage';
 import { logger } from '../utils/logger';
 import { bleService } from './BLEService';
 import { heartRateService } from './HeartRateService';
 import type { HeartRateReading } from './HeartRateService';
+import { polarPMDService } from './PolarPMDService';
+import type { PMDAccFrame } from './PolarPMDService';
+import {
+  filterMotionCorruptedReadings,
+  type StrapClockOffset,
+} from '../utils/SignalQualityCalculator';
 import { sessionRepository } from './SessionRepository';
 import { summaryComputeService } from './SummaryComputeService';
-import {
-  TrainingType,
-  TrainingSession,
-  HeartRateZone,
-} from '../types/training';
+import { computeHRZone } from './TRIMPCalculator';
+import { useRecordingStore } from '../store/recordingStore';
+import { usePhysiologyStore } from '../store/physiologyStore';
+import { TrainingType, TrainingSession } from '../types/training';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function computeHRZone(hr: number, maxHR: number): HeartRateZone {
-  const pct = hr / maxHR;
-  if (pct < 0.6) return HeartRateZone.ZONE_1;
-  if (pct < 0.7) return HeartRateZone.ZONE_2;
-  if (pct < 0.8) return HeartRateZone.ZONE_3;
-  if (pct < 0.9) return HeartRateZone.ZONE_4;
-  return HeartRateZone.ZONE_5;
+/** Effective max HR for live zone display — same fallback as useACWR/TrainingContextService. */
+function getLiveMaxHR(): number {
+  const physiology = usePhysiologyStore.getState().settings;
+  const age = physiology?.ageYears ?? 30;
+  return physiology?.maxHeartRate ?? 220 - age;
 }
 
 export interface RecordingSession {
@@ -40,6 +42,12 @@ class SessionRecordingService {
 
   /** HR readings accumulated during the current recording. */
   private hrReadings: HeartRateReading[] = [];
+  /** ACC frames accumulated during the current recording (empty if PMD unsupported this session). */
+  private accFrames: PMDAccFrame[] = [];
+  /** Strap-clock → wall-clock anchor, captured at the first PMD frame received. */
+  private strapClockOffset: StrapClockOffset | null = null;
+  /** Device the current recording's PMD stream (if any) was started on — needed to stop it cleanly. */
+  private pmdDevice: Device | null = null;
 
   /**
    * Start a new recording session.
@@ -79,17 +87,52 @@ class SessionRecordingService {
 
       // Start live HR monitoring if a BLE device is connected
       this.hrReadings = [];
+      this.accFrames = [];
+      this.strapClockOffset = null;
+      this.pmdDevice = null;
+      useRecordingStore.getState().reset();
       if (deviceId) {
         const connectedDevice = bleService.getConnectedDevice();
         if (connectedDevice && connectedDevice.id === deviceId) {
+          const liveMaxHR = getLiveMaxHR();
           try {
             await heartRateService.startMonitoring(connectedDevice, reading => {
               this.hrReadings.push(reading);
+              useRecordingStore
+                .getState()
+                .recordHeartRate(reading.heartRate, liveMaxHR);
             });
             logger.info('HR monitoring started for recording', { deviceId });
           } catch (hrErr) {
             // HR monitoring failure is non-fatal — session still records
             logger.warn('Could not start HR monitoring', { hrErr });
+          }
+
+          // Motion-quality data is best-effort: unsupported/dry-strap
+          // sessions fall back to unfiltered HR-only recording (see
+          // SignalQualityCalculator.filterMotionCorruptedReadings).
+          try {
+            this.pmdDevice = connectedDevice;
+            const pmdStarted = await polarPMDService.startAccStreaming(
+              connectedDevice,
+              frame => {
+                if (!this.strapClockOffset) {
+                  this.strapClockOffset = {
+                    deviceStartNs: frame.timestampNs,
+                    wallStartMs: Date.now(),
+                  };
+                  useRecordingStore.getState().setPmdActive(true);
+                }
+                this.accFrames.push(frame);
+              },
+            );
+            logger.info('PMD ACC streaming attempt finished', {
+              deviceId,
+              started: pmdStarted,
+            });
+          } catch (pmdErr) {
+            // PMD failure is non-fatal — HR-only recording still proceeds
+            logger.warn('Could not start PMD ACC streaming', { pmdErr });
           }
         }
       }
@@ -125,6 +168,15 @@ class SessionRecordingService {
       const hrSnapshot = [...this.hrReadings];
       this.hrReadings = [];
 
+      // Stop PMD ACC streaming (no-op if it was never started) and snapshot
+      await polarPMDService.stopAccStreaming(this.pmdDevice);
+      const accSnapshot = [...this.accFrames];
+      const strapClockOffsetSnapshot = this.strapClockOffset;
+      this.accFrames = [];
+      this.strapClockOffset = null;
+      this.pmdDevice = null;
+      useRecordingStore.getState().reset();
+
       // Update session with end time
       const completedSession: RecordingSession = {
         ...activeSession,
@@ -137,7 +189,12 @@ class SessionRecordingService {
       await secureRemove(this.ACTIVE_SESSION_KEY);
 
       // Persist to SQLite with real type and HR data
-      await this.addToHistory(completedSession, hrSnapshot);
+      await this.addToHistory(
+        completedSession,
+        hrSnapshot,
+        accSnapshot,
+        strapClockOffsetSnapshot,
+      );
 
       logger.info('Recording session stopped successfully', {
         sessionId: completedSession.id,
@@ -219,22 +276,38 @@ class SessionRecordingService {
   private async addToHistory(
     session: RecordingSession,
     hrReadings: HeartRateReading[],
+    accFrames: PMDAccFrame[] = [],
+    strapClockOffset: StrapClockOffset | null = null,
   ): Promise<void> {
     try {
+      const { clean: cleanReadings, discardedCount } =
+        filterMotionCorruptedReadings(hrReadings, accFrames, strapClockOffset);
+
+      if (discardedCount > 0) {
+        logger.info(
+          'Excluded motion-corrupted HR readings from session average',
+          {
+            sessionId: session.id,
+            discardedCount,
+            totalReadings: hrReadings.length,
+          },
+        );
+      }
+
       const avgHR =
-        hrReadings.length > 0
+        cleanReadings.length > 0
           ? Math.round(
-              hrReadings.reduce((sum, r) => sum + r.heartRate, 0) /
-                hrReadings.length,
+              cleanReadings.reduce((sum, r) => sum + r.heartRate, 0) /
+                cleanReadings.length,
             )
           : 0;
       const maxHR =
-        hrReadings.length > 0
-          ? Math.max(...hrReadings.map(r => r.heartRate))
+        cleanReadings.length > 0
+          ? Math.max(...cleanReadings.map(r => r.heartRate))
           : 0;
       const minHR =
-        hrReadings.length > 0
-          ? Math.min(...hrReadings.map(r => r.heartRate))
+        cleanReadings.length > 0
+          ? Math.min(...cleanReadings.map(r => r.heartRate))
           : 0;
 
       const ts: TrainingSession = {
@@ -248,7 +321,7 @@ class SessionRecordingService {
         averageHeartRate: avgHR,
         maxHeartRate: maxHR,
         minHeartRate: minHR,
-        heartRateData: hrReadings.map(r => ({
+        heartRateData: cleanReadings.map(r => ({
           timestamp: r.timestamp,
           heartRate: r.heartRate,
           rrInterval: r.rrIntervals[0],

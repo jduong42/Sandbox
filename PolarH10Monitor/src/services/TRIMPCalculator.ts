@@ -5,6 +5,16 @@ import {
   ZoneSummary,
 } from '../types/training';
 
+/** Classifies a single HR reading into a zone as a percentage of max HR. */
+export function computeHRZone(hr: number, maxHR: number): HeartRateZone {
+  const pct = hr / maxHR;
+  if (pct < 0.6) return HeartRateZone.ZONE_1;
+  if (pct < 0.7) return HeartRateZone.ZONE_2;
+  if (pct < 0.8) return HeartRateZone.ZONE_3;
+  if (pct < 0.9) return HeartRateZone.ZONE_4;
+  return HeartRateZone.ZONE_5;
+}
+
 /**
  * TRIMP (Training Impulse) Calculator
  * Based on Banister's original formula with modifications for different approaches
