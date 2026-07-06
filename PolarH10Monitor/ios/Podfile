@@ -31,5 +31,13 @@ target 'PolarH10Monitor' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    
+    # Fix for Apple Clang 16+ std=c++20 consteval bug in fmt 11.0.2
+    fmt_base_h = "#{installer.sandbox.root}/fmt/include/fmt/base.h"
+    if File.exist?(fmt_base_h)
+      text = File.read(fmt_base_h)
+      text = text.gsub("#  define FMT_USE_CONSTEVAL 1", "#  define FMT_USE_CONSTEVAL 0")
+      File.write(fmt_base_h, text)
+    end
   end
 end
