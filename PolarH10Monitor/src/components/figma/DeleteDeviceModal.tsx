@@ -12,7 +12,8 @@ import { figmaTheme as t } from '../../theme/figmaTheme';
 export interface BLEDevice {
   id: string;
   name: string;
-  batteryLevel: number;
+  /** Only readable while actively connected — null for other paired devices. */
+  batteryLevel: number | null;
   isActive: boolean;
   lastConnected: string;
 }

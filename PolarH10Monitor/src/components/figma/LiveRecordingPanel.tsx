@@ -3,33 +3,12 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { useRecordingStore } from '../../store/recordingStore';
 import { HeartRateZoneCalculator } from '../../services/TRIMPCalculator';
-import { HeartRateZone } from '../../types/training';
+import { ZONE_TEXT_COLOR_DARK, ZONE_TEXT_COLOR_LIGHT } from '../../theme/zoneColors';
 
 interface LiveRecordingPanelProps {
   /** Start time of the active session, used to tick the elapsed timer. */
   startTime: Date;
 }
-
-// Per-theme zone colors, chosen to meet WCAG 2.2 AA (4.5:1) as *text* color
-// against each theme's surface — the original HeartRateZoneCalculator
-// palette was tuned for the dark theme only and fails on white (verified:
-// only 1/5 cleared 3:1, none cleared 4.5:1 against #ffffff).
-const ZONE_TEXT_COLOR_DARK: Record<HeartRateZone, string> = {
-  [HeartRateZone.ZONE_1]: '#4CAF50',
-  [HeartRateZone.ZONE_2]: '#8BC34A',
-  [HeartRateZone.ZONE_3]: '#FFC107',
-  [HeartRateZone.ZONE_4]: '#FF9800',
-  [HeartRateZone.ZONE_5]: '#f87171', // brighter than the base palette's
-  // #F44336 (3.97:1 on dark surface) so it clears the 4.5:1 AA minimum too.
-};
-
-const ZONE_TEXT_COLOR_LIGHT: Record<HeartRateZone, string> = {
-  [HeartRateZone.ZONE_1]: '#15803d',
-  [HeartRateZone.ZONE_2]: '#4d7c0f',
-  [HeartRateZone.ZONE_3]: '#b45309',
-  [HeartRateZone.ZONE_4]: '#c2410c',
-  [HeartRateZone.ZONE_5]: '#b91c1c',
-};
 
 function formatElapsed(totalSeconds: number): string {
   const safeSeconds = Math.max(0, totalSeconds);
@@ -43,6 +22,10 @@ export function LiveRecordingPanel({ startTime }: LiveRecordingPanelProps) {
   const currentHeartRate = useRecordingStore(s => s.currentHeartRate);
   const currentZone = useRecordingStore(s => s.currentZone);
   const pmdActive = useRecordingStore(s => s.pmdActive);
+  const sessionAvgHeartRate = useRecordingStore(s => s.sessionAvgHeartRate);
+  const sessionPeakHeartRate = useRecordingStore(s => s.sessionPeakHeartRate);
+  const currentTrimp = useRecordingStore(s => s.currentTrimp);
+  const zoneDurations = useRecordingStore(s => s.zoneDurations);
 
   const [elapsedSeconds, setElapsedSeconds] = useState(() =>
     Math.floor((Date.now() - startTime.getTime()) / 1000),
@@ -61,6 +44,23 @@ export function LiveRecordingPanel({ startTime }: LiveRecordingPanelProps) {
     currentZone != null
       ? HeartRateZoneCalculator.getZoneInfo()[currentZone].name
       : null;
+  // "Zone N · Name" rather than just the name — the name alone doesn't tell
+  // you where it falls on the 1-5 scale (e.g. is "Active Recovery" the top
+  // or bottom zone?).
+  const zoneLabel =
+    currentZone != null && zoneName != null
+      ? `Zone ${currentZone} · ${zoneName}`
+      : null;
+  const zoneTimeSeconds = currentZone != null ? zoneDurations[currentZone] : 0;
+  const zoneBadgeLabel =
+    zoneLabel != null && zoneTimeSeconds > 0
+      ? `${zoneLabel} · ${formatElapsed(Math.round(zoneTimeSeconds))} in zone`
+      : zoneLabel;
+
+  const statsAccessibilityLabel =
+    sessionAvgHeartRate != null
+      ? `Session average ${sessionAvgHeartRate} beats per minute, peak ${sessionPeakHeartRate}, training impulse ${currentTrimp?.toFixed(1) ?? 0}`
+      : undefined;
 
   // One combined, coherent phrase for screen readers rather than three
   // fragmented labels — and deliberately not auto-announced every second
@@ -108,7 +108,9 @@ export function LiveRecordingPanel({ startTime }: LiveRecordingPanelProps) {
             importantForAccessibility="no-hide-descendants"
           >
             <View style={[styles.zoneDot, { backgroundColor: zoneColor }]} />
-            <Text style={[styles.zoneText, { color: zoneColor }]}>{zoneName}</Text>
+            <Text style={[styles.zoneText, { color: zoneColor }]}>
+              {zoneBadgeLabel}
+            </Text>
           </View>
         )}
       </View>
@@ -120,9 +122,40 @@ export function LiveRecordingPanel({ startTime }: LiveRecordingPanelProps) {
         {formatElapsed(elapsedSeconds)}
       </Text>
 
+      {sessionAvgHeartRate != null && (
+        <View
+          style={[styles.statsRow, { borderTopColor: c.border }]}
+          accessible
+          accessibilityLabel={statsAccessibilityLabel}
+        >
+          <StatItem label="Avg" value={`${sessionAvgHeartRate}`} c={c} />
+          <View style={[styles.statDivider, { backgroundColor: c.border }]} />
+          <StatItem label="Peak" value={`${sessionPeakHeartRate}`} c={c} />
+          <View style={[styles.statDivider, { backgroundColor: c.border }]} />
+          <StatItem label="TRIMP" value={(currentTrimp ?? 0).toFixed(1)} c={c} />
+        </View>
+      )}
+
       <Text style={[styles.signalStatus, { color: c.muted }]}>
         {pmdActive ? 'Motion tracking active' : 'Heart rate only'}
       </Text>
+    </View>
+  );
+}
+
+function StatItem({
+  label,
+  value,
+  c,
+}: {
+  label: string;
+  value: string;
+  c: ReturnType<typeof useTheme>['c'];
+}) {
+  return (
+    <View style={styles.statItem}>
+      <Text style={[styles.statLabel, { color: c.muted }]}>{label}</Text>
+      <Text style={[styles.statValue, { color: c.foreground }]}>{value}</Text>
     </View>
   );
 }
@@ -179,6 +212,32 @@ const styles = StyleSheet.create({
   timer: {
     fontSize: 20,
     fontWeight: '600',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopWidth: 1,
+    paddingTop: 12,
+    width: '100%',
+    gap: 20,
+  },
+  statItem: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  statLabel: {
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
   },
   signalStatus: {
     fontSize: 13,

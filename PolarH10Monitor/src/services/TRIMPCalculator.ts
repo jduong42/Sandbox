@@ -15,6 +15,49 @@ export function computeHRZone(hr: number, maxHR: number): HeartRateZone {
   return HeartRateZone.ZONE_5;
 }
 
+export interface ZoneSummaryPoint {
+  heartRate: number;
+  zone: HeartRateZone;
+  /** Seconds this reading's zone/HR applied for (e.g. until the next reading arrived). */
+  durationSeconds: number;
+}
+
+/**
+ * Buckets a sequence of HR readings into per-zone time/percentage/avg-HR
+ * summaries. Duration-aware per point (rather than assuming a fixed sample
+ * interval) so it works correctly for real recordings where readings arrive
+ * at irregular intervals, not just evenly-spaced synthetic data.
+ */
+export function buildZoneSummary(points: ZoneSummaryPoint[]): ZoneSummary[] {
+  const buckets: Record<HeartRateZone, { timeInZone: number; heartRates: number[] }> = {
+    [HeartRateZone.ZONE_1]: { timeInZone: 0, heartRates: [] },
+    [HeartRateZone.ZONE_2]: { timeInZone: 0, heartRates: [] },
+    [HeartRateZone.ZONE_3]: { timeInZone: 0, heartRates: [] },
+    [HeartRateZone.ZONE_4]: { timeInZone: 0, heartRates: [] },
+    [HeartRateZone.ZONE_5]: { timeInZone: 0, heartRates: [] },
+  };
+
+  let totalDuration = 0;
+  for (const point of points) {
+    buckets[point.zone].timeInZone += point.durationSeconds;
+    buckets[point.zone].heartRates.push(point.heartRate);
+    totalDuration += point.durationSeconds;
+  }
+
+  return Object.entries(buckets).map(([zone, data]) => ({
+    zone: Number(zone) as HeartRateZone,
+    timeInZone: data.timeInZone,
+    percentage: totalDuration > 0 ? (data.timeInZone / totalDuration) * 100 : 0,
+    averageHR:
+      data.heartRates.length > 0
+        ? Math.round(
+            data.heartRates.reduce((a, b) => a + b, 0) / data.heartRates.length,
+          )
+        : 0,
+    maxHR: data.heartRates.length > 0 ? Math.max(...data.heartRates) : 0,
+  }));
+}
+
 /**
  * TRIMP (Training Impulse) Calculator
  * Based on Banister's original formula with modifications for different approaches

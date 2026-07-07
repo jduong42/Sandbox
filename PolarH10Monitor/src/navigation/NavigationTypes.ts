@@ -7,4 +7,5 @@ export type RootStackParamList = {
   Main: undefined;
   ProfileSettings: undefined;
   StartSession: undefined;
+  SessionDetail: { sessionId: string };
 };

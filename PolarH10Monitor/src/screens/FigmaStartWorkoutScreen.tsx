@@ -77,8 +77,7 @@ export function FigmaStartWorkoutScreen() {
   const { c } = useTheme();
   const { user } = useAuth();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const { isConnected, connectedDeviceName, connectedDevice } =
-    useBLEScanning() as any;
+  const { isConnected, connectedDeviceName, batteryLevel } = useBLEScanning();
   const { toast, show: showToast, hide: hideToast } = useToast(4000);
   const [showAllSessions, setShowAllSessions] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -162,7 +161,7 @@ export function FigmaStartWorkoutScreen() {
             <BLEStatus
               isConnected={isConnected}
               deviceName={connectedDeviceName ?? 'No Device'}
-              batteryLevel={0}
+              batteryLevel={batteryLevel ?? 0}
               onConnect={() => {
                 /* navigate to Settings to pair */
               }}
@@ -209,7 +208,15 @@ export function FigmaStartWorkoutScreen() {
                 </View>
               ) : (
                 visibleSessions.map(session => (
-                  <TrainingSessionCard key={session.id} session={session} />
+                  <TrainingSessionCard
+                    key={session.id}
+                    session={session}
+                    onPress={() =>
+                      navigation.navigate('SessionDetail', {
+                        sessionId: String(session.id),
+                      })
+                    }
+                  />
                 ))
               )}
             </View>

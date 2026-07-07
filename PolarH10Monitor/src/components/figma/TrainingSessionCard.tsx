@@ -25,9 +25,10 @@ function getLoadLevel(trimp: number): LoadLevel {
 
 interface TrainingSessionCardProps {
   session: TrainingSession;
+  onPress?: () => void;
 }
 
-export function TrainingSessionCard({ session }: TrainingSessionCardProps) {
+export function TrainingSessionCard({ session, onPress }: TrainingSessionCardProps) {
   const { c } = useTheme();
   const load =
     session.trimpScore != null ? getLoadLevel(session.trimpScore) : null;
@@ -38,6 +39,9 @@ export function TrainingSessionCard({ session }: TrainingSessionCardProps) {
         { backgroundColor: c.surface, borderColor: c.border },
       ]}
       activeOpacity={0.7}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`View details for ${session.name}`}
     >
       <View style={styles.header}>
         <View style={styles.headerText}>

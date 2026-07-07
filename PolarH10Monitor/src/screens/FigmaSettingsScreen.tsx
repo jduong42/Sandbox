@@ -29,8 +29,14 @@ import { useBLEScanning } from '../hooks/useBLEScanning';
 export function FigmaSettingsScreen() {
   const { isDark, toggleTheme, c } = useTheme();
   const { user } = useAuth();
-  const { isConnected, connectedDeviceName, startScan, discoveredDevices, isScanning } =
-    useBLEScanning();
+  const {
+    isConnected,
+    connectedDeviceName,
+    startScan,
+    discoveredDevices,
+    isScanning,
+    batteryLevel,
+  } = useBLEScanning();
   const [devices, setDevices] = useState<BLEDevice[]>([]);
   const [deviceToDelete, setDeviceToDelete] = useState<BLEDevice | null>(null);
   const [showScanModal, setShowScanModal] = useState(false);
@@ -39,20 +45,26 @@ export function FigmaSettingsScreen() {
     try {
       const stored = await deviceHistoryService.getDevices();
       setDevices(
-        stored.map(d => ({
-          id: d.id,
-          name: d.name,
-          batteryLevel: 0, // Battery not tracked by BLE history
-          isActive: isConnected && connectedDeviceName === d.name,
-          lastConnected: deviceHistoryService.getFormattedLastConnected(
-            d.lastConnected,
-          ),
-        })),
+        stored.map(d => {
+          const isActive = isConnected && connectedDeviceName === d.name;
+          return {
+            id: d.id,
+            name: d.name,
+            // BLE can only read battery from a device it's actively connected
+            // to — other paired devices show a neutral placeholder, not a
+            // fake reading.
+            batteryLevel: isActive ? batteryLevel : null,
+            isActive,
+            lastConnected: deviceHistoryService.getFormattedLastConnected(
+              d.lastConnected,
+            ),
+          };
+        }),
       );
     } catch (e) {
       console.warn('[SettingsScreen] failed to load devices', e);
     }
-  }, [isConnected, connectedDeviceName]);
+  }, [isConnected, connectedDeviceName, batteryLevel]);
 
   useFocusEffect(
     useCallback(() => {

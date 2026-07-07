@@ -1,8 +1,9 @@
 import { BleManager, Device, State } from 'react-native-ble-plx';
+import { Buffer } from 'buffer';
 import { PermissionsAndroid, Platform } from 'react-native';
 import { PERMISSIONS, request, RESULTS } from 'react-native-permissions';
 import { logger } from '../utils/logger';
-import { CONNECTION_SETTINGS } from '../constants/ble';
+import { CONNECTION_SETTINGS, BLE_SERVICES, BLE_CHARACTERISTICS } from '../constants/ble';
 import { deviceHistoryService } from './DeviceHistoryService';
 
 class BLEService {
@@ -357,6 +358,31 @@ class BLEService {
       });
       this.connectedDevice = null;
       return false;
+    }
+  }
+
+  /**
+   * Reads the current battery level (0-100) from the standard Battery Service.
+   * A single on-demand read, not a subscription — battery doesn't need
+   * streaming. Returns null (never throws) if the service/characteristic
+   * isn't available or the read fails, matching the non-fatal pattern used
+   * elsewhere for optional BLE capabilities (e.g. PMD ACC streaming).
+   */
+  async readBatteryLevel(device: Device): Promise<number | null> {
+    try {
+      const characteristic = await device.readCharacteristicForService(
+        BLE_SERVICES.BATTERY,
+        BLE_CHARACTERISTICS.BATTERY_LEVEL,
+      );
+      if (!characteristic.value) return null;
+      const bytes = Buffer.from(characteristic.value, 'base64');
+      return bytes.length > 0 ? bytes[0] : null;
+    } catch (error) {
+      logger.debug('Battery level not available for this device', {
+        deviceId: device.id,
+        error,
+      });
+      return null;
     }
   }
 

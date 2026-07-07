@@ -12,16 +12,25 @@ import {
 } from '../utils/SignalQualityCalculator';
 import { sessionRepository } from './SessionRepository';
 import { summaryComputeService } from './SummaryComputeService';
-import { computeHRZone } from './TRIMPCalculator';
-import { useRecordingStore } from '../store/recordingStore';
-import { usePhysiologyStore } from '../store/physiologyStore';
+import { computeHRZone, buildZoneSummary, TRIMPCalculator } from './TRIMPCalculator';
+import { useRecordingStore, type LivePhysiology } from '../store/recordingStore';
+import { usePhysiologyStore, toUserProfile } from '../store/physiologyStore';
+import { getSessionCalories } from '../utils/CalorieCalculator';
 import { TrainingType, TrainingSession } from '../types/training';
 
-/** Effective max HR for live zone display — same fallback as useACWR/TrainingContextService. */
-function getLiveMaxHR(): number {
+/**
+ * Effective physiology for live zone/TRIMP display and end-of-session TRIMP/
+ * calorie computation — same fallbacks used elsewhere (useACWR,
+ * TrainingContextService, AnalyticsService.enrichSessionsWithTRIMP).
+ */
+function getLivePhysiology(): LivePhysiology {
   const physiology = usePhysiologyStore.getState().settings;
   const age = physiology?.ageYears ?? 30;
-  return physiology?.maxHeartRate ?? 220 - age;
+  return {
+    maxHeartRate: physiology?.maxHeartRate ?? 220 - age,
+    restingHeartRate: physiology?.restingHeartRate ?? 60,
+    gender: physiology?.sex ?? 'male',
+  };
 }
 
 export interface RecordingSession {
@@ -94,13 +103,13 @@ class SessionRecordingService {
       if (deviceId) {
         const connectedDevice = bleService.getConnectedDevice();
         if (connectedDevice && connectedDevice.id === deviceId) {
-          const liveMaxHR = getLiveMaxHR();
+          useRecordingStore
+            .getState()
+            .startSession(session.startTime, getLivePhysiology());
           try {
             await heartRateService.startMonitoring(connectedDevice, reading => {
               this.hrReadings.push(reading);
-              useRecordingStore
-                .getState()
-                .recordHeartRate(reading.heartRate, liveMaxHR);
+              useRecordingStore.getState().recordHeartRate(reading.heartRate);
             });
             logger.info('HR monitoring started for recording', { deviceId });
           } catch (hrErr) {
@@ -309,6 +318,27 @@ class SessionRecordingService {
         cleanReadings.length > 0
           ? Math.min(...cleanReadings.map(r => r.heartRate))
           : 0;
+      // Zone classification uses physiological max HR, NOT the session's own
+      // observed max — otherwise a low-intensity session always looks like
+      // it's mostly in the high zones, since everything gets normalized
+      // against whatever peak you happened to hit that one session. This is
+      // the same basis the live view (recordingStore) already uses.
+      const physiology = getLivePhysiology();
+      const zoneBasisMaxHR = physiology.maxHeartRate;
+
+      const zoneSummary = buildZoneSummary(
+        cleanReadings.map((r, i) => {
+          const next = cleanReadings[i + 1];
+          const durationSeconds = next
+            ? (next.timestamp.getTime() - r.timestamp.getTime()) / 1000
+            : 0; // last reading — no next timestamp to bound it
+          return {
+            heartRate: r.heartRate,
+            zone: computeHRZone(r.heartRate, zoneBasisMaxHR),
+            durationSeconds,
+          };
+        }),
+      );
 
       const ts: TrainingSession = {
         id: session.id,
@@ -318,6 +348,7 @@ class SessionRecordingService {
         endTime: session.endTime ?? session.startTime,
         duration: session.duration ? Math.round(session.duration / 1000) : 0,
         type: session.type,
+        title: session.name,
         averageHeartRate: avgHR,
         maxHeartRate: maxHR,
         minHeartRate: minHR,
@@ -325,10 +356,29 @@ class SessionRecordingService {
           timestamp: r.timestamp,
           heartRate: r.heartRate,
           rrInterval: r.rrIntervals[0],
-          zone: computeHRZone(r.heartRate, maxHR || 190),
+          zone: computeHRZone(r.heartRate, zoneBasisMaxHR),
         })),
-        zoneSummary: [],
+        zoneSummary,
       };
+
+      // TRIMP/training load — same computation AnalyticsService.
+      // enrichSessionsWithTRIMP() already does for seeded data, now also done
+      // at write time for real sessions.
+      const trimpMethods = TRIMPCalculator.calculateAllTRIMPMethods(ts, {
+        restingHeartRate: physiology.restingHeartRate,
+        maxHeartRate: physiology.maxHeartRate,
+        gender: physiology.gender,
+      });
+      ts.trimpScore = trimpMethods.banister;
+      ts.trainingLoad = trimpMethods.simplified;
+
+      // Calories — Keytel et al. (2005) HR-based estimate, previously computed
+      // only for seeded/dummy data.
+      ts.calories = getSessionCalories(
+        cleanReadings.map(r => r.heartRate),
+        toUserProfile(usePhysiologyStore.getState().settings),
+      );
+
       await sessionRepository.insert(ts, false);
       await summaryComputeService.recomputeForSession(ts);
     } catch (error) {

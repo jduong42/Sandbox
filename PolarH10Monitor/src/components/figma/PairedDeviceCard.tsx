@@ -59,7 +59,7 @@ export function PairedDeviceCard({
         <View style={styles.batteryRow}>
           <Text style={styles.batteryEmoji}>🔋</Text>
           <Text style={[styles.batteryText, { color: c.muted }]}>
-            {device.batteryLevel}%
+            {device.batteryLevel != null ? `${device.batteryLevel}%` : '—'}
           </Text>
         </View>
       </TouchableOpacity>

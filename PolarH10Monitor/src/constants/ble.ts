@@ -2,6 +2,7 @@
 export const BLE_SERVICES = {
   HEART_RATE: '0000180d-0000-1000-8000-00805f9b34fb',
   DEVICE_INFORMATION: '0000180a-0000-1000-8000-00805f9b34fb',
+  BATTERY: '0000180f-0000-1000-8000-00805f9b34fb',
 } as const;
 
 // BLE Characteristics
@@ -10,6 +11,7 @@ export const BLE_CHARACTERISTICS = {
   HEART_RATE_CONTROL_POINT: '00002a39-0000-1000-8000-00805f9b34fb',
   DEVICE_NAME: '00002a00-0000-1000-8000-00805f9b34fb',
   MANUFACTURER_NAME: '00002a29-0000-1000-8000-00805f9b34fb',
+  BATTERY_LEVEL: '00002a19-0000-1000-8000-00805f9b34fb',
 } as const;
 
 // Scan settings
@@ -26,6 +28,9 @@ export const CONNECTION_SETTINGS = {
   RECONNECT_DELAY_MS: 1000,
   MANAGER_READY_TIMEOUT_MS: 3000, // 3 seconds max wait for manager
   MANAGER_READY_CHECK_INTERVAL_MS: 100, // Check every 100ms
+  // Battery doesn't change fast enough to justify the 3s connection-status
+  // cadence above — a much slower, separate refresh avoids unnecessary BLE traffic.
+  BATTERY_REFRESH_INTERVAL_MS: 60000,
 } as const;
 
 // Heart rate settings

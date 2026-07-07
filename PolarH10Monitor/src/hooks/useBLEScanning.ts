@@ -16,6 +16,8 @@ interface BLEScanningState {
   connectedDeviceName?: string | undefined;
   bluetoothEnabled: boolean;
   discoveredDevices: DiscoveredDevice[];
+  /** Battery % (0-100) of the currently connected device, or null if unknown/not connected. */
+  batteryLevel: number | null;
 }
 
 interface BLEScanningActions {
@@ -35,6 +37,7 @@ export const useBLEScanning = (): BLEScanningState & BLEScanningActions => {
   const [discoveredDevices, setDiscoveredDevices] = useState<
     DiscoveredDevice[]
   >([]);
+  const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
 
   // Update status from BLE service
   const updateStatus = useCallback(async () => {
@@ -75,6 +78,33 @@ export const useBLEScanning = (): BLEScanningState & BLEScanningActions => {
       logger.debug('BLE status monitoring stopped');
     };
   }, [updateStatus]);
+
+  // Battery: refreshed on a much slower cadence than connection status —
+  // it doesn't change fast enough to justify frequent BLE traffic.
+  const refreshBattery = useCallback(async () => {
+    const device = bleService.getConnectedDevice();
+    if (!device) {
+      setBatteryLevel(null);
+      return;
+    }
+    const level = await bleService.readBatteryLevel(device);
+    setBatteryLevel(level);
+  }, []);
+
+  useEffect(() => {
+    if (!isConnected) {
+      setBatteryLevel(null);
+      return;
+    }
+
+    refreshBattery();
+    const batteryInterval = setInterval(
+      refreshBattery,
+      CONNECTION_SETTINGS.BATTERY_REFRESH_INTERVAL_MS,
+    );
+
+    return () => clearInterval(batteryInterval);
+  }, [isConnected, refreshBattery]);
 
   const startScan = useCallback(async () => {
     setIsScanning(true);
@@ -256,6 +286,7 @@ export const useBLEScanning = (): BLEScanningState & BLEScanningActions => {
     connectedDeviceName,
     bluetoothEnabled,
     discoveredDevices,
+    batteryLevel,
     // Actions
     startScan,
     connectToDevice,
