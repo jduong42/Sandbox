@@ -37,6 +37,10 @@
 	<string>This app uses Bluetooth to connect to your Polar H10 heart rate monitor</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>This app uses Bluetooth to connect to your Polar H10 heart rate monitor</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+	</array>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
