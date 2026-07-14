@@ -8,12 +8,15 @@ interface PairedDeviceCardProps {
   device: BLEDevice;
   onSelect: (deviceId: string) => void;
   onDelete: (device: BLEDevice) => void;
+  /** Only relevant/shown for the currently-active device. */
+  onDisconnect?: () => void;
 }
 
 export function PairedDeviceCard({
   device,
   onSelect,
   onDelete,
+  onDisconnect,
 }: PairedDeviceCardProps) {
   const { c } = useTheme();
   return (
@@ -63,6 +66,24 @@ export function PairedDeviceCard({
           </Text>
         </View>
       </TouchableOpacity>
+
+      {device.isActive && onDisconnect && (
+        <>
+          <View style={[styles.divider, { backgroundColor: c.border }]} />
+          <TouchableOpacity
+            style={styles.deleteRow}
+            onPress={onDisconnect}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Disconnect from ${device.name}`}
+          >
+            <Text style={styles.deleteEmoji}>🔌</Text>
+            <Text style={[styles.deleteText, { color: c.muted }]}>
+              Disconnect
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
 
       <View style={[styles.divider, { backgroundColor: c.border }]} />
       <TouchableOpacity

@@ -2398,6 +2398,11 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - RNNotifee (9.1.8):
+    - React-Core
+    - RNNotifee/NotifeeCore (= 9.1.8)
+  - RNNotifee/NotifeeCore (9.1.8):
+    - React-Core
   - RNPermissions (5.4.2):
     - boost
     - DoubleConversion
@@ -2663,6 +2668,7 @@ DEPENDENCIES:
   - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - RNFS (from `../node_modules/react-native-fs`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - "RNNotifee (from `../node_modules/@notifee/react-native`)"
   - RNPermissions (from `../node_modules/react-native-permissions`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
@@ -2842,6 +2848,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-fs"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNNotifee:
+    :path: "../node_modules/@notifee/react-native"
   RNPermissions:
     :path: "../node_modules/react-native-permissions"
   RNScreens:
@@ -2938,6 +2946,7 @@ SPEC CHECKSUMS:
   RNDeviceInfo: 4c852998208b60dc192ae3529e5867817719ad1e
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
   RNGestureHandler: db29d3e7edf41a11d133cc3ffd4029762376ed1a
+  RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
   RNPermissions: b15c9d7ba7aacff916439d445f385abbb2a36a4f
   RNScreens: 7ab5a342b48757987b6f58a680afb5e7ec4e213e
   RNSVG: cb3156ab4865f6a8bc145fb431a1003f02df2ff7
@@ -2945,6 +2954,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 0c4b7d2aacc910a1f702694fa86be830386f4ceb
 
-PODFILE CHECKSUM: 333d1abb57e7240bb42e6c46402ff76637509735
+PODFILE CHECKSUM: 68bad109fb19943400baf4765fec763265649179
 
 COCOAPODS: 1.16.2

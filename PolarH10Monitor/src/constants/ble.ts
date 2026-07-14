@@ -24,8 +24,12 @@ export const SCAN_SETTINGS = {
 // Connection settings
 export const CONNECTION_SETTINGS = {
   STATUS_UPDATE_INTERVAL_MS: 3000, // Check connection status every 3 seconds
-  RECONNECT_ATTEMPTS: 3,
-  RECONNECT_DELAY_MS: 1000,
+  // Interval between reconnect attempts during an active recording. No
+  // attempt cap on purpose — an out-of-range disconnect (e.g. phone left on
+  // a bench during a match) can last minutes, so retrying indefinitely
+  // while the recording is active is correct; it only stops on success or
+  // when the recording itself is stopped.
+  RECONNECT_RETRY_INTERVAL_MS: 4000,
   MANAGER_READY_TIMEOUT_MS: 3000, // 3 seconds max wait for manager
   MANAGER_READY_CHECK_INTERVAL_MS: 100, // Check every 100ms
   // Battery doesn't change fast enough to justify the 3s connection-status

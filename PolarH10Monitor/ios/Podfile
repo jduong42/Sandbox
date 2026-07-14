@@ -33,8 +33,11 @@ target 'PolarH10Monitor' do
     )
     
     # Fix for Apple Clang 16+ std=c++20 consteval bug in fmt 11.0.2
+    # CocoaPods sometimes extracts pod sources read-only, which breaks a
+    # plain File.write on a repeat `pod install` — chmod it writable first.
     fmt_base_h = "#{installer.sandbox.root}/fmt/include/fmt/base.h"
     if File.exist?(fmt_base_h)
+      File.chmod(0644, fmt_base_h)
       text = File.read(fmt_base_h)
       text = text.gsub("#  define FMT_USE_CONSTEVAL 1", "#  define FMT_USE_CONSTEVAL 0")
       File.write(fmt_base_h, text)

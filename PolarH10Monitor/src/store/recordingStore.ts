@@ -18,6 +18,8 @@ export interface LivePhysiology {
   gender: 'male' | 'female';
 }
 
+export type ConnectionState = 'connected' | 'reconnecting' | 'disconnected';
+
 type ZoneDurations = Record<HeartRateZone, number>;
 
 const EMPTY_ZONE_DURATIONS: ZoneDurations = {
@@ -38,6 +40,8 @@ interface RecordingState {
   currentTrimp: number | null;
   /** Accumulated seconds spent in each zone so far this session. */
   zoneDurations: ZoneDurations;
+  /** Live BLE connection state — surfaced in LiveRecordingPanel's status line. */
+  connectionState: ConnectionState;
 
   sessionStartTime: Date | null;
   physiology: LivePhysiology | null;
@@ -49,6 +53,7 @@ interface RecordingState {
   startSession: (startTime: Date, physiology: LivePhysiology) => void;
   recordHeartRate: (heartRate: number) => void;
   setPmdActive: (active: boolean) => void;
+  setConnectionState: (state: ConnectionState) => void;
   reset: () => void;
 }
 
@@ -60,6 +65,7 @@ const INITIAL_STATE = {
   sessionPeakHeartRate: null,
   currentTrimp: null,
   zoneDurations: EMPTY_ZONE_DURATIONS,
+  connectionState: 'connected' as ConnectionState,
   sessionStartTime: null,
   physiology: null,
   _hrSum: 0,
@@ -133,6 +139,8 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
   },
 
   setPmdActive: active => set({ pmdActive: active }),
+
+  setConnectionState: state => set({ connectionState: state }),
 
   reset: () => set({ ...INITIAL_STATE }),
 }));

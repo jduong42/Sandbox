@@ -12,7 +12,9 @@ class BLEService {
   private connectedDevice: Device | null = null;
   private bluetoothState: State = State.Unknown;
   private connectionSubscription: any = null;
-  private onDisconnectedCallback: ((deviceName: string) => void) | null = null;
+  private onDisconnectedCallback:
+    | ((deviceId: string, deviceName: string) => void)
+    | null = null;
 
   constructor() {
     this.manager = new BleManager();
@@ -114,8 +116,12 @@ class BLEService {
     return false;
   }
 
-  // Set callback for disconnection events
-  setOnDisconnectedCallback(callback: (deviceName: string) => void): void {
+  // Set callback for disconnection events. Only fires for unexpected
+  // disconnects — a manual disconnectDevice() call removes the underlying
+  // subscription before cancelling the connection, so it never triggers this.
+  setOnDisconnectedCallback(
+    callback: (deviceId: string, deviceName: string) => void,
+  ): void {
     this.onDisconnectedCallback = callback;
   }
 
@@ -307,10 +313,11 @@ class BLEService {
           this.connectedDevice?.name ||
           disconnectedDevice?.name ||
           'Unknown Device';
+        const deviceId = disconnectedDevice?.id ?? device.id;
 
         logger.info('Device disconnected', {
           deviceName,
-          deviceId: disconnectedDevice?.id,
+          deviceId,
           error: error?.message,
         });
 
@@ -319,7 +326,7 @@ class BLEService {
         // Notify the UI about disconnection
         if (this.onDisconnectedCallback) {
           try {
-            this.onDisconnectedCallback(deviceName);
+            this.onDisconnectedCallback(deviceId, deviceName);
           } catch (callbackError) {
             logger.error('Error in disconnect callback', callbackError);
           }

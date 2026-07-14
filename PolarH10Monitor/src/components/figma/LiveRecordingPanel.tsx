@@ -26,6 +26,7 @@ export function LiveRecordingPanel({ startTime }: LiveRecordingPanelProps) {
   const sessionPeakHeartRate = useRecordingStore(s => s.sessionPeakHeartRate);
   const currentTrimp = useRecordingStore(s => s.currentTrimp);
   const zoneDurations = useRecordingStore(s => s.zoneDurations);
+  const connectionState = useRecordingStore(s => s.connectionState);
 
   const [elapsedSeconds, setElapsedSeconds] = useState(() =>
     Math.floor((Date.now() - startTime.getTime()) / 1000),
@@ -137,7 +138,11 @@ export function LiveRecordingPanel({ startTime }: LiveRecordingPanelProps) {
       )}
 
       <Text style={[styles.signalStatus, { color: c.muted }]}>
-        {pmdActive ? 'Motion tracking active' : 'Heart rate only'}
+        {connectionState === 'reconnecting'
+          ? 'Reconnecting…'
+          : pmdActive
+          ? 'Motion tracking active'
+          : 'Heart rate only'}
       </Text>
     </View>
   );

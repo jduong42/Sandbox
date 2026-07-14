@@ -36,6 +36,7 @@ export function FigmaSettingsScreen() {
     discoveredDevices,
     isScanning,
     batteryLevel,
+    disconnectDevice,
   } = useBLEScanning();
   const [devices, setDevices] = useState<BLEDevice[]>([]);
   const [deviceToDelete, setDeviceToDelete] = useState<BLEDevice | null>(null);
@@ -209,6 +210,7 @@ export function FigmaSettingsScreen() {
                     device={device}
                     onSelect={handleSelectDevice}
                     onDelete={handleDeleteDevice}
+                    onDisconnect={device.isActive ? disconnectDevice : undefined}
                   />
                 ))}
               </View>

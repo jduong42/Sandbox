@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../context/AuthContext';
 import { useBLEScanning } from '../hooks/useBLEScanning';
+import { useRecordingStore } from '../store/recordingStore';
 import type { TrainingSession as StoredSession } from '../types/training';
 import type { RootStackParamList } from '../navigation/NavigationTypes';
 import { figmaStartWorkoutStyles as styles } from '../theme/figmaStartWorkoutScreen';
@@ -85,6 +86,23 @@ export function FigmaStartWorkoutScreen() {
     null,
   );
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
+  const connectionState = useRecordingStore(s => s.connectionState);
+  const previousConnectionState = useRef(connectionState);
+
+  // Toast on connection-state transitions during an active recording only —
+  // avoids firing on the default/initial value, and avoids firing at all
+  // when there's no recording for it to be relevant to.
+  useEffect(() => {
+    const previous = previousConnectionState.current;
+    if (isRecording && previous !== connectionState) {
+      if (connectionState === 'reconnecting') {
+        showToast('Heart rate monitor disconnected — reconnecting…', 'warning');
+      } else if (connectionState === 'connected' && previous === 'reconnecting') {
+        showToast('Reconnected to heart rate monitor', 'success');
+      }
+    }
+    previousConnectionState.current = connectionState;
+  }, [connectionState, isRecording, showToast]);
 
   const loadSessions = useCallback(async () => {
     try {

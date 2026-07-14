@@ -70,10 +70,21 @@ describe('recordingStore', () => {
     expect(useRecordingStore.getState().currentHeartRate).toBeNull();
   });
 
+  it('defaults connectionState to connected, and setConnectionState updates it', () => {
+    expect(useRecordingStore.getState().connectionState).toBe('connected');
+
+    useRecordingStore.getState().setConnectionState('reconnecting');
+    expect(useRecordingStore.getState().connectionState).toBe('reconnecting');
+
+    useRecordingStore.getState().setConnectionState('connected');
+    expect(useRecordingStore.getState().connectionState).toBe('connected');
+  });
+
   it('reset clears all live state, including physiology and accumulators', () => {
     useRecordingStore.getState().startSession(new Date(1_000_000), PHYSIOLOGY);
     useRecordingStore.getState().recordHeartRate(150);
     useRecordingStore.getState().setPmdActive(true);
+    useRecordingStore.getState().setConnectionState('reconnecting');
 
     useRecordingStore.getState().reset();
 
@@ -81,6 +92,7 @@ describe('recordingStore', () => {
     expect(state.currentHeartRate).toBeNull();
     expect(state.currentZone).toBeNull();
     expect(state.pmdActive).toBe(false);
+    expect(state.connectionState).toBe('connected');
     expect(state.sessionAvgHeartRate).toBeNull();
     expect(state.sessionPeakHeartRate).toBeNull();
     expect(state.currentTrimp).toBeNull();

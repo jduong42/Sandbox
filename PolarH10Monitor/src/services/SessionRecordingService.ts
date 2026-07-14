@@ -16,6 +16,12 @@ import { computeHRZone, buildZoneSummary, TRIMPCalculator } from './TRIMPCalcula
 import { useRecordingStore, type LivePhysiology } from '../store/recordingStore';
 import { usePhysiologyStore, toUserProfile } from '../store/physiologyStore';
 import { getSessionCalories } from '../utils/CalorieCalculator';
+import {
+  requestNotificationPermission,
+  notifyDisconnected,
+  notifyReconnected,
+} from '../utils/notifications';
+import { CONNECTION_SETTINGS } from '../constants/ble';
 import { TrainingType, TrainingSession } from '../types/training';
 
 /**
@@ -57,6 +63,12 @@ class SessionRecordingService {
   private strapClockOffset: StrapClockOffset | null = null;
   /** Device the current recording's PMD stream (if any) was started on — needed to stop it cleanly. */
   private pmdDevice: Device | null = null;
+  /** Device id the current recording is bound to — null when no recording is active. Doubles as the "is a recording active for this device" guard for the reconnect handler. */
+  private currentDeviceId: string | null = null;
+  /** Handle for the in-flight reconnect retry loop, if any. */
+  private reconnectTimer: ReturnType<typeof setInterval> | null = null;
+  /** Prevents overlapping connectToDevice attempts if one tick is still in flight when the next fires. */
+  private isAttemptingReconnect = false;
 
   /**
    * Start a new recording session.
@@ -99,50 +111,35 @@ class SessionRecordingService {
       this.accFrames = [];
       this.strapClockOffset = null;
       this.pmdDevice = null;
+      this.currentDeviceId = null;
+      this.isAttemptingReconnect = false;
+      if (this.reconnectTimer) {
+        clearInterval(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
       useRecordingStore.getState().reset();
       if (deviceId) {
         const connectedDevice = bleService.getConnectedDevice();
         if (connectedDevice && connectedDevice.id === deviceId) {
+          this.currentDeviceId = deviceId;
           useRecordingStore
             .getState()
             .startSession(session.startTime, getLivePhysiology());
-          try {
-            await heartRateService.startMonitoring(connectedDevice, reading => {
-              this.hrReadings.push(reading);
-              useRecordingStore.getState().recordHeartRate(reading.heartRate);
-            });
-            logger.info('HR monitoring started for recording', { deviceId });
-          } catch (hrErr) {
-            // HR monitoring failure is non-fatal — session still records
-            logger.warn('Could not start HR monitoring', { hrErr });
-          }
 
-          // Motion-quality data is best-effort: unsupported/dry-strap
-          // sessions fall back to unfiltered HR-only recording (see
-          // SignalQualityCalculator.filterMotionCorruptedReadings).
-          try {
-            this.pmdDevice = connectedDevice;
-            const pmdStarted = await polarPMDService.startAccStreaming(
-              connectedDevice,
-              frame => {
-                if (!this.strapClockOffset) {
-                  this.strapClockOffset = {
-                    deviceStartNs: frame.timestampNs,
-                    wallStartMs: Date.now(),
-                  };
-                  useRecordingStore.getState().setPmdActive(true);
-                }
-                this.accFrames.push(frame);
-              },
-            );
-            logger.info('PMD ACC streaming attempt finished', {
-              deviceId,
-              started: pmdStarted,
-            });
-          } catch (pmdErr) {
-            // PMD failure is non-fatal — HR-only recording still proceeds
-            logger.warn('Could not start PMD ACC streaming', { pmdErr });
-          }
+          await this.resumeMonitoring(connectedDevice, deviceId);
+
+          // Register for unexpected disconnects (out-of-range, not a manual
+          // disconnectDevice() call — BLEService already guarantees this
+          // callback only fires for the former) so we can auto-reconnect and
+          // notify. Cleared in stopRecording().
+          bleService.setOnDisconnectedCallback((disconnectedId, disconnectedName) =>
+            this.handleUnexpectedDisconnect(disconnectedId, disconnectedName),
+          );
+
+          // Best-effort — a denied/failed permission just means the OS
+          // notification silently won't show; the in-app Toast/status still
+          // covers it, so this must never block starting the recording.
+          requestNotificationPermission().catch(() => {});
         }
       }
 
@@ -160,6 +157,102 @@ class SessionRecordingService {
   }
 
   /**
+   * (Re-)attaches HR + PMD monitoring to a connected device. Used both for
+   * the initial start and after a successful reconnect — critically, this
+   * never resets hrReadings/accFrames/recordingStore session state, since a
+   * reconnect resumes the same in-progress session rather than starting a
+   * new one.
+   */
+  private async resumeMonitoring(device: Device, deviceId: string): Promise<void> {
+    try {
+      await heartRateService.startMonitoring(device, reading => {
+        this.hrReadings.push(reading);
+        useRecordingStore.getState().recordHeartRate(reading.heartRate);
+      });
+      logger.info('HR monitoring started', { deviceId });
+    } catch (hrErr) {
+      // HR monitoring failure is non-fatal — session still records
+      logger.warn('Could not start HR monitoring', { hrErr });
+    }
+
+    // Motion-quality data is best-effort: unsupported/dry-strap sessions
+    // fall back to unfiltered HR-only recording (see
+    // SignalQualityCalculator.filterMotionCorruptedReadings).
+    try {
+      this.pmdDevice = device;
+      const pmdStarted = await polarPMDService.startAccStreaming(device, frame => {
+        if (!this.strapClockOffset) {
+          this.strapClockOffset = {
+            deviceStartNs: frame.timestampNs,
+            wallStartMs: Date.now(),
+          };
+          useRecordingStore.getState().setPmdActive(true);
+        }
+        this.accFrames.push(frame);
+      });
+      logger.info('PMD ACC streaming attempt finished', { deviceId, started: pmdStarted });
+    } catch (pmdErr) {
+      // PMD failure is non-fatal — HR-only recording still proceeds
+      logger.warn('Could not start PMD ACC streaming', { pmdErr });
+    }
+
+    useRecordingStore.getState().setConnectionState('connected');
+  }
+
+  /**
+   * Fires when BLEService detects an unexpected disconnect (out of range —
+   * never fires for a manual disconnectDevice() call). Only acts if the
+   * disconnected device is the one this recording is actually bound to.
+   */
+  private handleUnexpectedDisconnect(deviceId: string, deviceName: string): void {
+    if (this.currentDeviceId !== deviceId) return; // not our active recording
+
+    logger.warn('Unexpected disconnect during active recording', { deviceId, deviceName });
+    useRecordingStore.getState().setConnectionState('reconnecting');
+    useRecordingStore.getState().setPmdActive(false);
+    notifyDisconnected(deviceName).catch(() => {});
+
+    this.attemptReconnect(deviceId, deviceName);
+  }
+
+  /**
+   * Retries connectToDevice on an interval until it succeeds or the
+   * recording is stopped. Deliberately uncapped — an out-of-range disconnect
+   * (e.g. phone left on a bench during a match) can last minutes, so giving
+   * up after a fixed number of attempts would defeat the point.
+   */
+  private attemptReconnect(deviceId: string, deviceName: string): void {
+    if (this.reconnectTimer) return; // already retrying
+
+    this.reconnectTimer = setInterval(async () => {
+      // Recording was stopped (or a new one started) since this loop began.
+      if (this.currentDeviceId !== deviceId) {
+        if (this.reconnectTimer) clearInterval(this.reconnectTimer);
+        this.reconnectTimer = null;
+        return;
+      }
+      if (this.isAttemptingReconnect) return; // previous attempt still in flight
+
+      this.isAttemptingReconnect = true;
+      try {
+        const device = await bleService.connectToDevice(deviceId);
+        if (this.currentDeviceId !== deviceId) return; // stopped mid-attempt
+
+        if (this.reconnectTimer) clearInterval(this.reconnectTimer);
+        this.reconnectTimer = null;
+
+        await this.resumeMonitoring(device, deviceId);
+        logger.info('Reconnected after unexpected disconnect', { deviceId });
+        notifyReconnected(deviceName).catch(() => {});
+      } catch (error) {
+        logger.debug('Reconnect attempt failed, will retry', { deviceId, error });
+      } finally {
+        this.isAttemptingReconnect = false;
+      }
+    }, CONNECTION_SETTINGS.RECONNECT_RETRY_INTERVAL_MS);
+  }
+
+  /**
    * Stop the current recording session.
    * Computes HR stats from collected readings and persists to SQLite.
    */
@@ -170,6 +263,15 @@ class SessionRecordingService {
       const activeSession = await this.getActiveSession();
       if (!activeSession) {
         throw new Error('No active recording session found');
+      }
+
+      // Stop reconnect handling first — this session is ending on purpose,
+      // any in-flight retry loop or disconnect callback must not fire after.
+      this.currentDeviceId = null;
+      bleService.clearOnDisconnectedCallback();
+      if (this.reconnectTimer) {
+        clearInterval(this.reconnectTimer);
+        this.reconnectTimer = null;
       }
 
       // Stop HR monitoring and snapshot collected readings
