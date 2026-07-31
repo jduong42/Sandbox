@@ -1,5 +1,8 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { figmaTheme as t } from './figmaTheme';
+
+const THEME_PREFERENCE_KEY = 'polar_theme_is_dark';
 
 export const DARK_COLORS = {
   background: ['#0f172a', '#1e293b'] as [string, string],
@@ -60,7 +63,27 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(true);
-  const toggleTheme = () => setIsDark(v => !v);
+
+  // Restore the user's last-chosen theme on launch — defaults to dark
+  // (matching the initial state above) if nothing was ever saved.
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_PREFERENCE_KEY)
+      .then(stored => {
+        if (stored != null) setIsDark(stored === 'dark');
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggleTheme = () => {
+    setIsDark(v => {
+      const next = !v;
+      AsyncStorage.setItem(THEME_PREFERENCE_KEY, next ? 'dark' : 'light').catch(
+        () => {},
+      );
+      return next;
+    });
+  };
+
   const c = isDark ? DARK_COLORS : LIGHT_COLORS;
 
   return (

@@ -2,7 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StatusBar, Dimensions, Animated } from 'react-native';
 import { Surface } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
-import { theme, splashScreenStyles } from '../theme';
+import { figmaTheme as t } from '../theme/figmaTheme';
+import { splashScreenStyles } from '../theme/splashScreen';
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -155,16 +156,12 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     <View style={splashScreenStyles.container}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor={theme.colors.background}
+        backgroundColor={t.colors.background}
         hidden={true}
       />
 
       <LinearGradient
-        colors={[
-          theme.colors.background,
-          theme.colors.backgroundSecondary,
-          theme.colors.primary + '20',
-        ]}
+        colors={[t.colors.background, t.colors.surface, t.colors.primary + '20']}
         style={splashScreenStyles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -201,7 +198,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
           >
             <Text style={splashScreenStyles.appTitle}>PolarH10Monitor</Text>
             <Text style={splashScreenStyles.tagline}>
-              Professional Fitness Tracking
+              Your Training, Tracked
             </Text>
           </Animated.View>
 
@@ -219,13 +216,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               />
             </View>
             <Text style={splashScreenStyles.loadingText}>Initializing...</Text>
-          </View>
-
-          {/* Footer */}
-          <View style={splashScreenStyles.footer}>
-            <Text style={splashScreenStyles.footerText}>
-              Powered by React Native
-            </Text>
           </View>
         </View>
       </LinearGradient>

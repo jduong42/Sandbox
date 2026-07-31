@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Platform, Text } from 'react-native';
 import { figmaTheme as t } from '../theme/figmaTheme';
+import { useTheme } from '../theme/ThemeContext';
 import { FigmaHomeScreen } from '../screens/FigmaHomeScreen';
 import { FigmaStartWorkoutScreen } from '../screens/FigmaStartWorkoutScreen';
 import { FigmaAIChatScreen } from '../screens/FigmaAIChatScreen';
@@ -37,6 +38,8 @@ const DEV_TAB = __DEV__
   : [];
 
 export default function MainTabNavigator() {
+  const { c } = useTheme();
+
   useEffect(() => {
     console.log(
       '📱 MainTabNavigator mounted on',
@@ -48,6 +51,10 @@ export default function MainTabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        // Every tab screen already builds its own themed header (greeting,
+        // title, avatar) — the native tab-level header was redundant chrome
+        // stacked on top of it, and never followed the light/dark toggle.
+        headerShown: false,
         tabBarHideOnKeyboard: true,
         tabBarIcon: ({ focused }) => {
           const tab = [...FIGMA_TABS, ...DEV_TAB].find(
@@ -65,10 +72,10 @@ export default function MainTabNavigator() {
           );
         },
         tabBarActiveTintColor: t.colors.primary,
-        tabBarInactiveTintColor: t.colors.muted,
+        tabBarInactiveTintColor: c.muted,
         tabBarStyle: {
-          backgroundColor: t.colors.surface,
-          borderTopColor: t.colors.border,
+          backgroundColor: c.surface,
+          borderTopColor: c.border,
           borderTopWidth: 1,
           paddingBottom: 16,
           paddingTop: 8,
@@ -86,16 +93,6 @@ export default function MainTabNavigator() {
         },
         tabBarItemStyle: {
           paddingVertical: 4,
-        },
-        headerStyle: {
-          backgroundColor: t.colors.background,
-          borderBottomColor: t.colors.border,
-          borderBottomWidth: 1,
-        },
-        headerTintColor: t.colors.foreground,
-        headerTitleStyle: {
-          fontWeight: '600',
-          fontSize: 17,
         },
       })}
     >

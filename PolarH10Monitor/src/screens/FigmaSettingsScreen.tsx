@@ -215,10 +215,17 @@ export function FigmaSettingsScreen() {
                 ))}
               </View>
             ) : (
-              <View style={styles.emptyDevices}>
+              <View
+                style={[
+                  styles.emptyDevices,
+                  { backgroundColor: c.surface, borderColor: c.border },
+                ]}
+              >
                 <Text style={styles.emptyEmoji}>📡</Text>
-                <Text style={styles.emptyTitle}>No paired devices</Text>
-                <Text style={styles.emptySub}>
+                <Text style={[styles.emptyTitle, { color: c.muted }]}>
+                  No paired devices
+                </Text>
+                <Text style={[styles.emptySub, { color: c.muted }]}>
                   Scan to find nearby Bluetooth devices
                 </Text>
               </View>

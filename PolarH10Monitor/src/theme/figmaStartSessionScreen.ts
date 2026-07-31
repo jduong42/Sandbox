@@ -2,7 +2,16 @@ import { StyleSheet } from 'react-native';
 import { figmaTheme as t } from './figmaTheme';
 
 /**
- * Styles for FigmaStartSessionScreen.
+ * Layout-only styles for FigmaStartSessionScreen — colors are applied
+ * inline at the call site via useTheme()'s `c.*`, following the same
+ * pattern as SessionDetailScreen/FigmaSettingsScreen, so this screen
+ * follows the app's light/dark toggle instead of being hardcoded dark.
+ *
+ * The two exceptions are the brand purple/pink CTA gradient and the
+ * "active chip" state: both use a fixed brand-purple background regardless
+ * of app theme, so their text colors are fixed light literals too (not
+ * `c.foreground`, which would turn near-black in light mode and become
+ * unreadable against that fixed purple background).
  *
  * Note: scrollContent intentionally omits paddingBottom — apply
  * { paddingBottom: BOTTOM_INSET + 24 } inline at the call site to
@@ -11,11 +20,9 @@ import { figmaTheme as t } from './figmaTheme';
 export const figmaStartSessionStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: t.colors.background,
   },
   header: {
     alignItems: 'center',
-    borderBottomColor: t.colors.surface,
     borderBottomWidth: 1,
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -23,7 +30,6 @@ export const figmaStartSessionStyles = StyleSheet.create({
   },
   backBtn: {
     alignItems: 'center',
-    backgroundColor: 'rgba(51,65,85,0.6)',
     borderRadius: t.radius.xl,
     height: 40,
     justifyContent: 'center',
@@ -33,7 +39,6 @@ export const figmaStartSessionStyles = StyleSheet.create({
     width: 40,
   },
   title: {
-    color: t.colors.foreground,
     flex: 1,
     fontSize: 18,
     fontWeight: t.typography.weights.bold,
@@ -44,7 +49,6 @@ export const figmaStartSessionStyles = StyleSheet.create({
     // paddingBottom applied inline: BOTTOM_INSET + 24
   },
   sectionLabel: {
-    color: t.colors.muted,
     fontSize: t.typography.sizes.sm,
     fontWeight: t.typography.weights.semibold,
     letterSpacing: 0.8,
@@ -57,8 +61,6 @@ export const figmaStartSessionStyles = StyleSheet.create({
     gap: 10,
   },
   chip: {
-    backgroundColor: t.colors.surface,
-    borderColor: t.colors.accent,
     borderRadius: t.radius.md,
     borderWidth: 1,
     justifyContent: 'center',
@@ -71,20 +73,17 @@ export const figmaStartSessionStyles = StyleSheet.create({
     borderColor: t.colors.primary,
   },
   chipText: {
-    color: t.colors.muted,
     fontSize: t.typography.sizes.base,
     fontWeight: t.typography.weights.medium,
   },
   chipTextActive: {
-    color: t.colors.foreground,
+    // Fixed light literal, not theme-following — see file header note.
+    color: '#f1f5f9',
     fontWeight: t.typography.weights.semibold,
   },
   input: {
-    backgroundColor: t.colors.surface,
-    borderColor: t.colors.accent,
     borderRadius: t.radius.md,
     borderWidth: 1,
-    color: t.colors.foreground,
     fontSize: 16,
     paddingHorizontal: t.spacing.lg,
     paddingVertical: 14,
@@ -100,7 +99,8 @@ export const figmaStartSessionStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   btnText: {
-    color: t.colors.foreground,
+    // Fixed light literal, not theme-following — see file header note.
+    color: '#f1f5f9',
     fontSize: t.typography.sizes.base,
     fontWeight: t.typography.weights.bold,
   },

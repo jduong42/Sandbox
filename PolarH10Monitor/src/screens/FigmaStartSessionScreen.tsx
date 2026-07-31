@@ -23,6 +23,7 @@ import NativeIcon from '../components/common/NativeIcon';
 import { sessionRecordingService } from '../services/SessionRecordingService';
 import { bleService } from '../services/BLEService';
 import { useBLEScanning } from '../hooks/useBLEScanning';
+import { useTheme } from '../theme/ThemeContext';
 import { TrainingType } from '../types/training';
 import type { RootStackParamList } from '../navigation/NavigationTypes';
 
@@ -41,6 +42,7 @@ const PRESETS: { label: string; type: TrainingType }[] = [
 
 export function FigmaStartSessionScreen() {
   const navigation = useNavigation<Nav>();
+  const { c } = useTheme();
   const { isConnected, connectedDeviceName } = useBLEScanning();
   const [sessionName, setSessionName] = useState('');
   const [selectedType, setSelectedType] = useState<TrainingType>(
@@ -79,19 +81,21 @@ export function FigmaStartSessionScreen() {
   const canStart = sessionName.trim().length > 0;
 
   return (
-    <View style={styles.root}>
+    <LinearGradient colors={c.background} style={styles.root}>
       <View style={{ height: TOP_INSET }} />
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: c.border }]}>
         <TouchableOpacity
-          style={styles.backBtn}
+          style={[styles.backBtn, { backgroundColor: c.surface }]}
           onPress={() => navigation.goBack()}
           accessibilityLabel="Cancel"
           accessibilityRole="button"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <NativeIcon name="close" size={20} color="#e2e8f0" />
+          <NativeIcon name="close" size={20} color={c.foreground} />
         </TouchableOpacity>
-        <Text style={styles.title}>New Training Session</Text>
+        <Text style={[styles.title, { color: c.foreground }]}>
+          New Training Session
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -104,19 +108,29 @@ export function FigmaStartSessionScreen() {
         showsVerticalScrollIndicator={false}
         automaticallyAdjustKeyboardInsets
       >
-        <Text style={styles.sectionLabel}>Activity Type</Text>
+        <Text style={[styles.sectionLabel, { color: c.muted }]}>
+          Activity Type
+        </Text>
         <View style={styles.grid}>
           {PRESETS.map(preset => {
             const active = selectedType === preset.type;
             return (
               <TouchableOpacity
                 key={preset.type}
-                style={[styles.chip, active && styles.chipActive]}
+                style={[
+                  styles.chip,
+                  { backgroundColor: c.surface, borderColor: c.border },
+                  active && styles.chipActive,
+                ]}
                 onPress={() => handlePresetSelect(preset)}
                 activeOpacity={0.7}
               >
                 <Text
-                  style={[styles.chipText, active && styles.chipTextActive]}
+                  style={[
+                    styles.chipText,
+                    { color: c.muted },
+                    active && styles.chipTextActive,
+                  ]}
                 >
                   {preset.label}
                 </Text>
@@ -125,15 +139,18 @@ export function FigmaStartSessionScreen() {
           })}
         </View>
 
-        <Text style={[styles.sectionLabel, { marginTop: 28 }]}>
+        <Text style={[styles.sectionLabel, { color: c.muted, marginTop: 28 }]}>
           Session Name
         </Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            { backgroundColor: c.surface, borderColor: c.border, color: c.foreground },
+          ]}
           value={sessionName}
           onChangeText={setSessionName}
           placeholder="e.g., Morning Run"
-          placeholderTextColor="#64748b"
+          placeholderTextColor={c.muted}
           returnKeyType="done"
           onSubmitEditing={handleStart}
         />
@@ -159,6 +176,6 @@ export function FigmaStartSessionScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
 }

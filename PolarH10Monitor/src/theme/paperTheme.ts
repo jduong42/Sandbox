@@ -1,31 +1,39 @@
-import { MD3DarkTheme } from 'react-native-paper';
-import { darkColors } from './darkColors';
+import { MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
+import { figmaTheme as t } from './figmaTheme';
+import type { ThemeColors } from './ThemeContext';
 
-export const paperTheme = {
-  ...MD3DarkTheme,
-  colors: {
-    ...MD3DarkTheme.colors,
-    primary: darkColors.primary,
-    primaryContainer: darkColors.primaryDark,
-    secondary: darkColors.secondary,
-    secondaryContainer: darkColors.secondary + '20',
-    tertiary: darkColors.success,
-    surface: darkColors.surface,
-    surfaceVariant: darkColors.surfaceVariant,
-    background: darkColors.background,
-    error: darkColors.error,
-    errorContainer: darkColors.error + '20',
-    onPrimary: darkColors.textOnPrimary,
-    onSecondary: darkColors.text,
-    onSurface: darkColors.text,
-    onBackground: darkColors.text,
-    outline: darkColors.border,
-    outlineVariant: darkColors.borderLight,
-    shadow: darkColors.shadow,
-    scrim: darkColors.glassDark,
-    inverseSurface: darkColors.white,
-    inverseOnSurface: darkColors.black,
-    inversePrimary: darkColors.primaryDark,
-  },
-  roundness: 12, // Modern rounded corners
-};
+/**
+ * Builds a react-native-paper theme from the app's actual current colors
+ * (figmaTheme brand tokens + ThemeContext's light/dark `c`), so the handful
+ * of Paper components in the app (PaperProvider wrapper, Surface elevation
+ * on the splash screen) never fall out of sync with the rest of the UI.
+ */
+export function buildPaperTheme(c: ThemeColors, isDark: boolean) {
+  const base = isDark ? MD3DarkTheme : MD3LightTheme;
+  return {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: t.colors.primary,
+      primaryContainer: t.colors.primaryHover,
+      secondary: t.colors.primaryTo,
+      secondaryContainer: t.colors.primaryToHover,
+      tertiary: t.colors.green,
+      surface: c.surface,
+      surfaceVariant: c.accent,
+      background: c.backgroundSolid,
+      error: t.colors.red,
+      errorContainer: t.colors.redTint,
+      onPrimary: '#ffffff',
+      onSecondary: '#ffffff',
+      onSurface: c.foreground,
+      onBackground: c.foreground,
+      outline: c.border,
+      outlineVariant: c.border,
+      inverseSurface: c.foreground,
+      inverseOnSurface: c.backgroundSolid,
+      inversePrimary: t.colors.primaryHover,
+    },
+    roundness: 12,
+  };
+}

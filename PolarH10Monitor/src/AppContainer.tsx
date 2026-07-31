@@ -6,10 +6,49 @@ import { StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import RootStackNavigator from './navigation/RootStackNavigator';
 import SplashScreen from './screens/SplashScreen';
-import { theme } from './theme';
-import { ThemeProvider } from './theme/ThemeContext';
+import { buildPaperTheme } from './theme/paperTheme';
+import { figmaTheme as t } from './theme/figmaTheme';
+import { ThemeProvider, useTheme } from './theme/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { databaseService } from './services/DatabaseService';
+
+/**
+ * Renders the app's chrome (status bar, nav container, Paper theme) from
+ * the live theme context, so light/dark actually covers the whole app
+ * rather than just individual screens. Must render inside ThemeProvider.
+ */
+function ThemedApp() {
+  const { c, isDark } = useTheme();
+
+  return (
+    <SafeAreaProvider>
+      <PaperProvider theme={buildPaperTheme(c, isDark)}>
+        <StatusBar barStyle={c.statusBar} backgroundColor={c.backgroundSolid} />
+        <NavigationContainer
+          theme={{
+            dark: isDark,
+            colors: {
+              primary: t.colors.primary,
+              background: c.backgroundSolid,
+              card: c.surface,
+              text: c.foreground,
+              border: c.border,
+              notification: t.colors.red,
+            },
+            fonts: {
+              regular: { fontFamily: 'System', fontWeight: 'normal' },
+              medium: { fontFamily: 'System', fontWeight: '500' },
+              bold: { fontFamily: 'System', fontWeight: 'bold' },
+              heavy: { fontFamily: 'System', fontWeight: '900' },
+            },
+          }}
+        >
+          <RootStackNavigator />
+        </NavigationContainer>
+      </PaperProvider>
+    </SafeAreaProvider>
+  );
+}
 
 const AppContainer: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -49,47 +88,7 @@ const AppContainer: React.FC = () => {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <AuthProvider>
-          <SafeAreaProvider>
-            <PaperProvider theme={theme.paper}>
-              <StatusBar
-                barStyle="light-content"
-                backgroundColor={theme.colors.background}
-              />
-              <NavigationContainer
-                theme={{
-                  dark: true,
-                  colors: {
-                    primary: theme.colors.primary,
-                    background: theme.colors.background,
-                    card: theme.colors.surface,
-                    text: theme.colors.text,
-                    border: theme.colors.border,
-                    notification: theme.colors.error,
-                  },
-                  fonts: {
-                    regular: {
-                      fontFamily: 'System',
-                      fontWeight: 'normal',
-                    },
-                    medium: {
-                      fontFamily: 'System',
-                      fontWeight: '500',
-                    },
-                    bold: {
-                      fontFamily: 'System',
-                      fontWeight: 'bold',
-                    },
-                    heavy: {
-                      fontFamily: 'System',
-                      fontWeight: '900',
-                    },
-                  },
-                }}
-              >
-                <RootStackNavigator />
-              </NavigationContainer>
-            </PaperProvider>
-          </SafeAreaProvider>
+          <ThemedApp />
         </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

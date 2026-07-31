@@ -33,7 +33,7 @@ const transitionConfig: StackNavigationOptions = {
       },
     },
   },
-  headerShown: false, // We'll handle headers in tab navigator
+  headerShown: false, // Each screen builds its own header
 };
 
 // Alternative fade transition (like Web View Transition API)
